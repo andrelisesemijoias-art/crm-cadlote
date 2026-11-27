@@ -129,6 +129,11 @@ tr:hover td{background:#fafbfc}
 #toast.on{opacity:1}
 #toast.act{pointer-events:auto}
 .th-s{cursor:pointer;user-select:none}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.layout > *{min-width:0}
+.stack{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--soft);margin:6px 0 12px}
+.stack i{display:block;height:100%}
+@media (max-width:1100px){ .layout{grid-template-columns:1fr} }
 html.dark{--bg:#0f1117;--card:#181b24;--ink:#e6e8ee;--muted:#9aa1b2;--line:#2a2f3c;--soft:#222633;--accent-soft:#25274a;--red-soft:#3a1c1c;--amber-soft:#3a2f12}
 html.dark .btn,html.dark input[type=text],html.dark input[type=email],html.dark input[type=password],html.dark input[type=number],html.dark input[type=date],html.dark input[type=search],html.dark select,html.dark textarea,html.dark .kpi,html.dark .list,html.dark .tbl-wrap,html.dark .kc,html.dark .drawer,html.dark .modal,html.dark .chips button{background:var(--card);color:var(--ink)}
 html.dark .col{background:#12141b}html.dark th{background:#1d2029}html.dark tr:hover td{background:#1d2029}
@@ -200,6 +205,7 @@ html.dark .preview{background:#13301f}html.dark .warn{border-color:#6b4f12}html.
     <div class="brand">CRM Frio<small>vendas de assinatura</small></div>
     <a href="#hoje" data-p="hoje">☀️ Hoje <span class="n" id="navHoje"></span></a>
     <a href="#kanban" data-p="kanban">🗂️ Funil</a>
+    <a href="#assinantes" data-p="assinantes">⭐ Assinantes</a>
     <a href="#leads" data-p="leads">👥 Leads</a>
     <a href="#templates" data-p="templates">💬 Templates</a>
     <a href="#importar" data-p="importar">⬆️ Importar</a>
@@ -239,7 +245,7 @@ const DEF_CFG = {limite_diario:30,cadencia:[2,4,7],dias_parado:5,meu_nome:'',
 const STATUS_PAG = ['','Em dia','Pendente','Atrasado','Cancelado'];
 
 let sb = null;
-const S = {leads:[],ints:[],tpls:[],blk:[],config:{...DEF_CFG},page:'hoje',drawer:null,user:'',dirty:false,hg:'',kcap:{},
+const S = {leads:[],ints:[],tpls:[],blk:[],config:{...DEF_CFG},page:'hoje',drawer:null,user:'',dirty:false,hg:'',kpg:{},kg:'',kt:'',kq:'',af:{q:'',plano:'',pag:'',pg:0},
   lf:{q:'',etapa:'',tag:'',esp:'',g:'',sk:'',sd:1,pg:0}, sel:new Set(), imp:null, excTab:'lixeira', relDias:30, tplEdit:null};
 
 /* ---------- utilidades ---------- */
@@ -521,7 +527,7 @@ async function novoLead(){
 }
 
 /* ---------- roteamento ---------- */
-const PAGES = {hoje:pHoje,kanban:pKanban,leads:pLeads,templates:pTemplates,importar:pImportar,exclusoes:pExclusoes,relatorios:pRelatorios,config:pConfig};
+const PAGES = {hoje:pHoje,kanban:pKanban,assinantes:pAssinantes,leads:pLeads,templates:pTemplates,importar:pImportar,exclusoes:pExclusoes,relatorios:pRelatorios,config:pConfig};
 function route(){
   const p = location.hash.slice(1);
   S.page = PAGES[p] ? p : 'hoje';
@@ -610,35 +616,79 @@ async function perderEsgotados(){
 /* =========================================================
    PÁGINA: FUNIL (KANBAN)
    ========================================================= */
+const KPP = 20;   // cards por página em cada coluna
+const ehHoje = iso => iso && ymd(new Date(iso))===today();
+function kFiltro(l){
+  const q = S.kq;
+  return (!q || norm(nomeDe(l)+' '+l.telefone).includes(norm(q))) &&
+    (!S.kg || (l.grupos?.length ? l.grupos : [l.origem]).includes(S.kg)) &&
+    (!S.kt || (l.tags||[]).includes(S.kt));
+}
+function kReset(){ S.kpg = {}; montarBoard(); }
 function pKanban(){
-  const lim = S.config.dias_parado, busca = S.kq || '';
+  const lim = S.config.dias_parado, a = ativos();
+  const grupos = [...new Set(a.flatMap(l=>l.grupos?.length?l.grupos:[l.origem]).filter(Boolean))].sort();
+  const tags = [...new Set(a.flatMap(l=>l.tags||[]))].sort();
   $('main').innerHTML = `
     <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
-      <div><h1>Funil</h1><p class="sub" style="margin:0">Arraste os cards entre as etapas (no celular, segure um instante). Borda vermelha = parado há mais de ${lim} dias.</p></div>
-      <input type="search" placeholder="Filtrar…" value="${esc(busca)}" style="width:220px" oninput="S.kq=this.value;clearTimeout(S._kt);S._kt=setTimeout(montarBoard,250)">
+      <div><h1>Funil</h1><p class="sub" style="margin:0">Arraste os cards entre as etapas (no celular, segure um instante). Borda vermelha = parado há mais de ${lim} dias. Quem virou assinante some do funil no dia seguinte e fica na página <a href="#assinantes">Assinantes</a>.</p></div>
+      <div class="row-flex">
+        <input type="search" placeholder="Filtrar nome ou telefone…" value="${esc(S.kq)}" style="width:210px" oninput="S.kq=this.value;clearTimeout(S._kt);S._kt=setTimeout(kReset,250)">
+        <select style="width:auto" onchange="S.kg=this.value;kReset()"><option value="">Todos os grupos</option>${grupos.map(g=>`<option ${S.kg===g?'selected':''}>${esc(g)}</option>`).join('')}</select>
+        <select style="width:auto" onchange="S.kt=this.value;kReset()"><option value="">Todas as tags</option>${tags.map(t=>`<option ${S.kt===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      </div>
     </div>
-    <div id="boardBox"></div>`;
+    <div class="layout"><div id="boardBox"></div><aside id="sideBox"></aside></div>`;
   montarBoard();
+}
+function kpag(k,d){ S.kpg[k] = (S.kpg[k]||0)+d; montarBoard(); }
+function statusLateral(){
+  const a = ativos(), f = filaHoje();
+  const por = ETAPAS.map(e=>({...e, n:a.filter(l=>l.etapa===e.k).length}));
+  const tot = a.length || 1, mrr = a.filter(l=>l.etapa==='assinante').reduce((s,l)=>s+(+l.valor_mensal||0),0);
+  const ult7 = [...Array(7)].map((_,i)=>addDays(today(),i-6)).map(d=>({d, n:S.ints.filter(i=>i.tipo==='whatsapp'&&ymd(new Date(i.created_at))===d).length}));
+  const mx = Math.max(1,...ult7.map(x=>x.n));
+  const respHoje = intsHoje('resposta').length;
+  return `<div class="card"><h2 style="margin-top:0">Status geral</h2>
+    <div class="kpis" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="kpi" style="padding:10px 12px"><b style="font-size:20px">${a.length}</b><span>leads ativos</span></div>
+      <div class="kpi" style="padding:10px 12px"><b style="font-size:20px">${money(mrr)}</b><span>MRR</span></div>
+      <div class="kpi" style="padding:10px 12px"><b style="font-size:20px">${f.novosHoje}/${S.config.limite_diario}</b><span>abordados hoje</span></div>
+      <div class="kpi" style="padding:10px 12px"><b style="font-size:20px">${respHoje}</b><span>respostas hoje</span></div>
+    </div>
+    <div class="stack" title="Distribuição por etapa">${por.map(e=>`<i style="width:${e.n/tot*100}%;background:${e.c}" title="${e.l}: ${e.n}"></i>`).join('')}</div>
+    ${por.map(e=>`<div class="hbar"><span class="l" style="width:92px">${e.l}</span><span class="t"><i style="width:${e.n/tot*100}%;background:${e.c}"></i></span><span class="v" style="width:70px">${e.n} · ${Math.round(e.n/tot*100)}%</span></div>`).join('')}
+    <div class="sec">Mensagens (7 dias)</div>
+    <div class="vbars" style="height:110px">${ult7.map(x=>`<div title="${fmtDate(x.d)}: ${x.n}"><b>${x.n||''}</b><i style="height:${x.n/mx*100}%"></i>${x.d.slice(8)}</div>`).join('')}</div>
+    <div class="sec">Pendências</div>
+    <div class="muted" style="font-size:13px">${f.follow.length} follow-ups vencidos · ${f.esgot.length} com tentativas esgotadas · ${f.trial.length} testes terminando</div>
+  </div>`;
 }
 function montarBoard(){
   const box = $('boardBox'); if(!box) return;
-  const a = ativos(), lim = S.config.dias_parado, busca = S.kq || '';
-  const filtro = l => !busca || norm(nomeDe(l)+' '+l.telefone).includes(norm(busca));
+  const a = ativos(), lim = S.config.dias_parado;
+  $('sideBox').innerHTML = statusLateral();
   box.innerHTML = `<div class="board">${ETAPAS.map(e => {
-      let col = a.filter(l=>l.etapa===e.k && filtro(l));
+      let col = a.filter(l=>l.etapa===e.k && kFiltro(l));
+      // assinante: só aparece no funil no dia em que virou assinante; depois fica na página Assinantes
+      let ocultos = 0;
+      if(e.k==='assinante'){ const hoje = col.filter(l=>ehHoje(l.etapa_desde)); ocultos = col.length-hoje.length; col = hoje; }
       col.sort((x,y)=>(y.etapa_desde||'').localeCompare(x.etapa_desde||''));
-      const total = col.length, cap = S.kcap[e.k] || (e.k==='novo'||e.k==='perdido' ? 40 : 300);
+      const total = col.length, pags = Math.max(1,Math.ceil(total/KPP));
+      const pg = S.kpg[e.k] = Math.min(Math.max(S.kpg[e.k]||0,0),pags-1);
       const val = e.k==='assinante' ? ' · '+money(col.reduce((s,l)=>s+(+l.valor_mensal||0),0))+'/mês' : '';
-      return `<div class="col"><h3><span class="dot" style="background:${e.c}"></span>${e.l}<span class="c">${total}${val}</span></h3>
-        <div class="cards" data-etapa="${e.k}">${col.slice(0,cap).map(l => {
+      return `<div class="col"><h3><span class="dot" style="background:${e.c}"></span>${e.l}${e.k==='assinante'?' (hoje)':''}<span class="c">${total}${val}</span></h3>
+        <div class="cards" data-etapa="${e.k}">${col.slice(pg*KPP,(pg+1)*KPP).map(l => {
           const d = daysSince(l.etapa_desde) ?? 0;
           const late = d>lim && !['novo','assinante','perdido'].includes(e.k);
           const extra = e.k==='perdido' ? esc(l.motivo_perda||'') : e.k==='assinante' ? esc(l.plano||'') : fmtTel(l.telefone);
           return `<div class="kc ${late?'late':''}" data-id="${l.id}" onclick="abrirLead('${l.id}')">
-            <b>${esc(nomeDe(l))}</b>
+            <b>${esc(nomeDe(l))} ${gruposBadge(l)}</b>
             <div class="meta"><span>${extra}</span><span class="dias">${d}d</span>
             <button class="wa-mini" onclick="event.stopPropagation();enviar('${l.id}')">WA</button></div></div>`;
-        }).join('')}${total>cap?`<div class="more"><button class="btn sm" onclick="S.kcap['${e.k}']=${cap}+100;montarBoard()">Ver mais 100 (restam ${total-cap})</button></div>`:''}</div></div>`;
+        }).join('')}</div>
+        ${ocultos?`<div class="more"><a href="#assinantes">+${ocultos} antigos em Assinantes</a></div>`:''}
+        ${pags>1?`<div class="pager" style="justify-content:center;margin:0 0 8px"><button class="btn sm" ${pg===0?'disabled':''} onclick="kpag('${e.k}',-1)">‹</button><span class="muted" style="font-size:12px">${pg+1}/${pags}</span><button class="btn sm" ${pg>=pags-1?'disabled':''} onclick="kpag('${e.k}',1)">›</button></div>`:''}</div>`;
     }).join('')}</div>`;
   document.querySelectorAll('.cards').forEach(el => new Sortable(el, {
     group:'k', animation:150, ghostClass:'sortable-ghost', delay:180, delayOnTouchOnly:true, touchStartThreshold:6,
@@ -664,6 +714,63 @@ function montarBoard(){
     }
   }));
 }
+
+/* =========================================================
+   PÁGINA: ASSINANTES
+   ========================================================= */
+function filtrarAss(){
+  const f = S.af, q = norm(f.q);
+  return ativos().filter(l => l.etapa==='assinante' &&
+    (!f.plano || l.plano===f.plano) && (!f.pag || (l.status_pagamento||'')===f.pag) &&
+    (!q || norm([l.nome,l.nome_original,l.telefone,l.cidade,l.plano].join(' ')).includes(q)))
+    .sort((x,y)=>(y.inicio_assinatura||'').localeCompare(x.inicio_assinatura||''));
+}
+function pAssinantes(){
+  const all = ativos().filter(l=>l.etapa==='assinante'), f = S.af;
+  const planos = [...new Set(all.map(l=>l.plano).filter(Boolean))].sort();
+  const mrr = all.filter(l=>l.status_pagamento!=='Cancelado').reduce((s,l)=>s+(+l.valor_mensal||0),0);
+  const mes = all.filter(l=>(l.inicio_assinatura||'').slice(0,7)===today().slice(0,7)).length;
+  const inad = all.filter(l=>['Pendente','Atrasado'].includes(l.status_pagamento)).length;
+  $('main').innerHTML = `
+    <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
+      <div><h1>Assinantes</h1><p class="sub" style="margin:0">Quem fechou assinatura sai do Funil no dia seguinte e fica aqui.</p></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><b>${all.length}</b><span>assinantes</span></div>
+      <div class="kpi"><b>${money(mrr)}</b><span>receita mensal (MRR)</span></div>
+      <div class="kpi"><b>${mes}</b><span>novos neste mês</span></div>
+      <div class="kpi"><b style="color:${inad?'var(--red)':'inherit'}">${inad}</b><span>pagamento pendente/atrasado</span></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="aq" placeholder="Buscar nome, telefone, cidade…" value="${esc(f.q)}">
+      <select id="ap"><option value="">Todos os planos</option>${planos.map(p=>`<option ${f.plano===p?'selected':''}>${esc(p)}</option>`).join('')}</select>
+      <select id="ag"><option value="">Todos os pagamentos</option>${STATUS_PAG.filter(Boolean).map(p=>`<option ${f.pag===p?'selected':''}>${p}</option>`).join('')}</select>
+    </div>
+    <div id="atbl"></div>`;
+  const upd = () => { f.pg=0; tabelaAss(); };
+  $('aq').oninput = e => { f.q=e.target.value; clearTimeout(S._at); S._at=setTimeout(upd,200); };
+  $('ap').onchange = e => { f.plano=e.target.value; upd(); };
+  $('ag').onchange = e => { f.pag=e.target.value; upd(); };
+  tabelaAss();
+}
+function tabelaAss(){
+  const arr = filtrarAss(), f = S.af, pags = Math.max(1,Math.ceil(arr.length/POR_PAG));
+  if(f.pg>=pags) f.pg = pags-1;
+  const pg = arr.slice(f.pg*POR_PAG,(f.pg+1)*POR_PAG);
+  const meses = l => { if(!l.inicio_assinatura) return '—'; const d=daysSince(l.inicio_assinatura+'T12:00:00'); return d<30 ? d+' d' : Math.floor(d/30)+' m'; };
+  $('atbl').innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Plano</th><th>Valor</th><th>Início</th><th>Tempo</th><th>Pagamento</th><th></th></tr></thead>
+    <tbody>${pg.map(l=>`<tr>
+      <td class="nm" onclick="abrirLead('${l.id}')">${esc(nomeDe(l))}</td>
+      <td>${fmtTel(l.telefone)}</td><td>${esc(l.plano||'—')}</td><td>${l.valor_mensal!=null?money(l.valor_mensal):'—'}</td>
+      <td>${fmtDate(l.inicio_assinatura)}</td><td>${meses(l)}</td>
+      <td><select style="width:auto;padding:3px 6px" onchange="mudarPag('${l.id}',this.value)">${STATUS_PAG.map(p=>`<option ${(l.status_pagamento||'')===p?'selected':''}>${p}</option>`).join('')}</select></td>
+      <td><button class="btn sm wa" onclick="enviar('${l.id}','')">WA</button></td></tr>`).join('') || `<tr><td colspan="8" class="empty">Nenhum assinante encontrado.</td></tr>`}</tbody></table></div>
+    <div class="pager"><span class="muted">${arr.length} resultado(s) · página ${f.pg+1}/${pags}</span>
+      <button class="btn sm" ${f.pg===0?'disabled':''} onclick="S.af.pg--;tabelaAss()">‹</button>
+      <button class="btn sm" ${f.pg>=pags-1?'disabled':''} onclick="S.af.pg++;tabelaAss()">›</button></div>`;
+}
+async function mudarPag(id,v){ try{ await updLead(id,{status_pagamento:v||null}); toast('Pagamento atualizado'); pAssinantes(); }catch(e){ erro(e); } }
 
 /* =========================================================
    PÁGINA: LEADS (TABELA)
