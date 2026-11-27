@@ -253,6 +253,8 @@ const lead = id => S.leads.find(l => l.id === id);
 const etapa = k => ETAPAS.find(e => e.k === k) || ETAPAS[0];
 const badge = k => { const e = etapa(k); return `<span class="badge" style="background:${e.c}22;color:${e.c}">${e.l}</span>`; };
 const ativos = () => S.leads.filter(l => !l.deleted_at);
+const nGrupos = l => (l.grupos||[]).length;
+const gruposBadge = l => nGrupos(l)>1 ? `<span class="badge" style="background:#fef3c7;color:#b45309" title="${esc((l.grupos||[]).join(' · '))}">👥 ${nGrupos(l)} grupos</span>` : '';
 const nomeDe = l => l.nome || l.nome_original?.trim() || fmtTel(l.telefone);
 
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),2200); }
@@ -608,7 +610,8 @@ function filtrarLeads(){
      (f.esp==='sem7' && l.etapa==='abordado' && daysSince(l.ultimo_contato)>=7) ||
      (f.esp==='atrasado' && l.proximo_followup && l.proximo_followup<t) ||
      (f.esp==='esgot' && l.etapa==='abordado' && !l.proximo_followup) ||
-     (f.esp==='semnome' && !l.nome)) &&
+     (f.esp==='semnome' && !l.nome) ||
+     (f.esp==='multi' && nGrupos(l)>1)) &&
     (!q || norm([l.nome,l.nome_original,l.telefone,l.cidade,l.segmento,l.origem,(l.tags||[]).join(' ')].join(' ')).includes(q))
   );
 }
@@ -625,7 +628,7 @@ function pLeads(){
       <select id="le"><option value="">Todas as etapas</option>${ETAPAS.map(e=>`<option value="${e.k}" ${f.etapa===e.k?'selected':''}>${e.l}</option>`).join('')}</select>
       <select id="lt"><option value="">Todas as tags</option>${tags.map(t=>`<option ${f.tag===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
       <select id="ls">
-        ${[['','Sem filtro especial'],['nunca','Nunca abordados'],['sem7','Sem resposta há 7+ dias'],['atrasado','Follow-up atrasado'],['esgot','Tentativas esgotadas'],['semnome','Sem nome']].map(([v,t])=>`<option value="${v}" ${f.esp===v?'selected':''}>${t}</option>`).join('')}
+        ${[['','Sem filtro especial'],['nunca','Nunca abordados'],['sem7','Sem resposta há 7+ dias'],['atrasado','Follow-up atrasado'],['esgot','Tentativas esgotadas'],['semnome','Sem nome'],['multi','Em mais de um grupo (repetidos)']].map(([v,t])=>`<option value="${v}" ${f.esp===v?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
     <div id="bulk"></div>
@@ -650,7 +653,7 @@ function tabelaLeads(){
       <td><input type="checkbox" ${S.sel.has(l.id)?'checked':''} onchange="selLead('${l.id}',this.checked)"></td>
       <td class="nm" onclick="abrirLead('${l.id}')" title="${esc(l.nome_original)}">${esc(nomeDe(l))}</td>
       <td>${fmtTel(l.telefone)}</td>
-      <td>${badge(l.etapa)}</td>
+      <td>${badge(l.etapa)} ${gruposBadge(l)}</td>
       <td>${(l.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</td>
       <td>${l.tentativas||0}</td>
       <td>${fmtDate(l.ultimo_contato)}</td>
@@ -766,6 +769,7 @@ function renderLead(){
 
       <div class="sec">Dados</div>
       <div class="grid2">${fld('nome','Nome (usado em {nome})')}${fld('telefone','WhatsApp')}</div>
+      <label class="f">Grupos em que está ${nGrupos(l)>1?'(repetido)':''}<input type="text" value="${esc((l.grupos||[]).join(' · ')||l.origem||'')}" disabled></label>
       <label class="f">Nome original (da planilha)<input type="text" value="${esc(l.nome_original||'')}" disabled></label>
       <div class="grid2">${fld('segmento','Segmento')}${fld('cidade','Cidade')}${fld('instagram','Instagram')}${fld('origem','Origem')}</div>
       <label class="f">Tags (separadas por vírgula)<input type="text" data-k="tags" value="${esc((l.tags||[]).join(', '))}"></label>
@@ -913,25 +917,41 @@ function pImportar(){
 }
 function prepararImp(){
   const {rows,map} = S.imp;
-  const existe = new Set(S.leads.map(l=>l.telefone)), blk = new Set(S.blk.map(b=>b.telefone)), visto = new Set();
-  const c = {total:rows.length, inval:0, dup:0, existe:0, bloq:0, corrigidos:0}, novos=[];
+  const porTel = new Map(S.leads.map(l=>[l.telefone,l])), blk = new Set(S.blk.map(b=>b.telefone));
+  const visto = new Map(), merge = new Map();   // visto: tel -> lead novo do arquivo; merge: tel -> grupos do lead existente
+  const c = {total:rows.length, inval:0, dup:0, existe:0, bloq:0, corrigidos:0, grupoAdd:0}, novos=[];
   for(const r of rows){
     const bruto = String(r[map.tel]||'').replace(/\D/g,'');
     const tel = normTel(r[map.tel]);
     if(!tel){ c.inval++; continue; }
-    if(visto.has(tel)){ c.dup++; continue; } visto.add(tel);
-    if(existe.has(tel)){ c.existe++; continue; }
+    const grupo = limparOrigem(map.origem ? r[map.origem] : '') || S.imp.origemPadrao || null;
+    if(visto.has(tel)){
+      c.dup++; const n = visto.get(tel);
+      if(grupo && !n.grupos.includes(grupo)){ n.grupos.push(grupo); c.grupoAdd++; }
+      continue;
+    }
+    if(porTel.has(tel)){
+      c.existe++;
+      const l = porTel.get(tel);
+      let g = merge.get(tel) || [...new Set([...(l.grupos||[]), ...(l.origem && !(l.grupos||[]).length ? [l.origem] : [])])];
+      if(grupo && !g.includes(grupo)){ g.push(grupo); c.grupoAdd++; }
+      merge.set(tel,g); continue;
+    }
     if(blk.has(tel) || (map.bloq && String(r[map.bloq]).toLowerCase()==='true')){ c.bloq++; continue; }
     if(tel.length===13 && bruto.length===12) c.corrigidos++;
     const orig = String((map.nome && r[map.nome]) || (map.nome2 && r[map.nome2]) || '').trim();
-    novos.push({telefone:tel, nome_original:orig||null, nome:limparNome(orig)||null,
-      origem: limparOrigem(map.origem ? r[map.origem] : '') || S.imp.origemPadrao || null,
-      tags: S.imp.tag ? [S.imp.tag] : [], etapa:'novo'});
+    const n = {telefone:tel, nome_original:orig||null, nome:limparNome(orig)||null,
+      origem: grupo, grupos: grupo ? [grupo] : [],
+      tags: S.imp.tag ? [S.imp.tag] : [], etapa:'novo'};
+    visto.set(tel,n); novos.push(n);
   }
-  return {c, novos};
+  // só atualiza leads existentes cujos grupos realmente mudaram
+  const atualizar = [...merge].map(([tel,g])=>({id:porTel.get(tel).id, telefone:tel, grupos:g}))
+    .filter(u => { const a=(porTel.get(u.telefone).grupos||[]); return u.grupos.length!==a.length || u.grupos.some(x=>!a.includes(x)); });
+  return {c, novos, atualizar};
 }
 function renderImp(){
-  const I = S.imp, {c,novos} = prepararImp();
+  const I = S.imp, {c,novos,atualizar} = prepararImp();
   const sel = (k,lbl,opc) => `<label class="f">${lbl}<select onchange="S.imp.map.${k}=this.value;renderImp()">${opc?'<option value="">(nenhuma)</option>':''}${I.cols.map(col=>`<option ${I.map[k]===col?'selected':''}>${esc(col)}</option>`).join('')}</select></label>`;
   $('impArea').innerHTML = `
     <h2>1. Colunas</h2>
@@ -945,7 +965,8 @@ function renderImp(){
       <div class="kpi"><b>${c.total}</b><span>linhas no arquivo</span></div>
       <div class="kpi"><b style="color:var(--wa)">${novos.length}</b><span>serão importados</span></div>
       <div class="kpi"><b>${c.corrigidos}</b><span>celulares com 9º dígito adicionado</span></div>
-      <div class="kpi"><b>${c.existe + c.dup}</b><span>já existem / duplicados</span></div>
+      <div class="kpi"><b>${c.existe + c.dup}</b><span>já existem / repetidos (não duplicam)</span></div>
+      <div class="kpi"><b style="color:var(--accent)">${c.grupoAdd}</b><span>grupos novos anotados em contatos repetidos (${atualizar.length} leads já existentes atualizados)</span></div>
       <div class="kpi"><b>${c.bloq}</b><span>bloqueados (ignorados)</span></div>
       <div class="kpi"><b>${c.inval}</b><span>telefone inválido</span></div>
     </div>
@@ -953,10 +974,10 @@ function renderImp(){
       <tbody>${novos.slice(0,15).map(n=>`<tr><td>${esc(n.nome_original)}</td><td>${esc(n.nome||'—')}</td><td>${fmtTel(n.telefone)}</td><td>${esc(n.origem||'')}</td></tr>`).join('')}</tbody></table></div>
     ${novos.length>15?`<p class="muted">… e mais ${novos.length-15}.</p>`:''}
     <h2>3. Importar</h2>
-    <button class="btn pri" id="btnImp" ${novos.length?'':'disabled'} onclick="importar()">Importar ${novos.length} leads</button> <span id="impProg" class="muted"></span>`;
+    <button class="btn pri" id="btnImp" ${novos.length||atualizar.length?'':'disabled'} onclick="importar()">Importar ${novos.length} leads${atualizar.length?` e atualizar ${atualizar.length}`:''}</button> <span id="impProg" class="muted"></span>`;
 }
 async function importar(){
-  const {novos} = prepararImp();
+  const {novos,atualizar} = prepararImp();
   $('btnImp').disabled = true;
   let ok = 0;
   try{
@@ -966,7 +987,12 @@ async function importar(){
       S.leads.push(...data); ok += data.length;
       $('impProg').textContent = `${ok}/${novos.length}…`;
     }
-    toast(`${ok} leads importados`);
+    for(let i=0;i<atualizar.length;i+=500){
+      const {data,error} = await sb.from('leads').upsert(atualizar.slice(i,i+500),{onConflict:'id'}).select('id,grupos');
+      if(error) throw error;
+      data.forEach(d=>{ const l=lead(d.id); if(l) l.grupos=d.grupos; });
+    }
+    toast(`${ok} leads importados` + (atualizar.length?`, ${atualizar.length} atualizados com novos grupos`:''));
     S.imp = null; location.hash = '#hoje';
   }catch(e){ erro(e); $('btnImp').disabled=false; }
 }

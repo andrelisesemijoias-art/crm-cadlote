@@ -113,6 +113,11 @@ end $$;
 revoke all on public.leads, public.templates, public.interacoes, public.bloqueados, public.config from anon;
 grant all on public.leads, public.templates, public.interacoes, public.bloqueados, public.config to authenticated;
 
+-- ---------- Migração: grupos em que o contato aparece (importação repetida) ----------
+alter table public.leads add column if not exists grupos text[] not null default '{}';
+update public.leads set grupos = array[origem] where origem is not null and grupos = '{}';
+create index if not exists leads_grupos_idx on public.leads using gin (grupos);
+
 -- ---------- Templates iniciais (só se a tabela estiver vazia) ----------
 -- Variáveis: {nome} {grupo} {segmento} {cidade} {meu_nome}
 -- Primeiro contato: pergunta curta, SEM link. Várias versões para o sistema sortear.
