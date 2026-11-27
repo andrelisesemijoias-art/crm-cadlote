@@ -118,6 +118,9 @@ alter table public.leads add column if not exists grupos text[] not null default
 update public.leads set grupos = array[origem] where origem is not null and grupos = '{}';
 create index if not exists leads_grupos_idx on public.leads using gin (grupos);
 
+-- ---------- Migração 2: quem fez cada interação ----------
+alter table public.interacoes add column if not exists usuario text;
+
 -- ---------- Templates iniciais (só se a tabela estiver vazia) ----------
 -- Variáveis: {nome} {grupo} {segmento} {cidade} {meu_nome}
 -- Primeiro contato: pergunta curta, SEM link. Várias versões para o sistema sortear.
