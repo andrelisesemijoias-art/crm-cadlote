@@ -1,0 +1,1144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM Abordagem Fria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#151821; --muted:#6b7280; --line:#e5e7eb; --soft:#f1f3f6;
+  --accent:#4f46e5; --accent-soft:#eef2ff; --wa:#16a34a; --wa-dark:#15803d; --red:#dc2626; --red-soft:#fef2f2;
+  --amber:#d97706; --amber-soft:#fffbeb; --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.hidden{display:none!important}
+/* layout */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.side{background:#11131a;color:#cfd3dc;padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:2px}
+.brand{font-weight:700;color:#fff;font-size:16px;padding:4px 10px 16px;letter-spacing:-.01em}
+.brand small{display:block;font-weight:400;color:#8b90a0;font-size:12px}
+.side a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:#cfd3dc;text-decoration:none;font-weight:500}
+.side a:hover{background:#1c1f29}
+.side a.on{background:#2a2e3b;color:#fff}
+.side a .n{margin-left:auto;background:var(--accent);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.side .foot{margin-top:auto;font-size:12px;color:#8b90a0;padding:10px}
+.side .foot button{background:none;border:0;color:#cfd3dc;cursor:pointer;padding:0;text-decoration:underline}
+main{padding:24px 28px;min-width:0}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:15px;margin:22px 0 10px}
+.sub{color:var(--muted);margin:0 0 18px}
+.muted{color:var(--muted)}
+/* ui */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.wa{background:var(--wa);border-color:var(--wa);color:#fff}
+.btn.wa:hover{background:var(--wa-dark)}
+.btn.danger{color:var(--red);border-color:#fecaca}
+.btn.danger:hover{background:var(--red-soft)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{
+  border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff;width:100%;min-width:0}
+textarea{resize:vertical;min-height:80px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+label.f{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:10px}
+label.f > *{margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.row-flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--soft);white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent);margin-right:3px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.kpi b{display:block;font-size:24px;letter-spacing:-.02em}
+.kpi span{color:var(--muted);font-size:12.5px}
+.bar{height:6px;background:var(--soft);border-radius:99px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--accent)}
+/* listas */
+.list{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .who{flex:1;min-width:0;cursor:pointer}
+.item .who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .who span{font-size:12.5px}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.empty{padding:18px;color:var(--muted);text-align:center}
+/* tabela */
+.tbl-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;text-align:left;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600;background:#fafbfc;border-top:0;position:sticky;top:0}
+td.nm{cursor:pointer;font-weight:500;max-width:240px;overflow:hidden;text-overflow:ellipsis}
+td input[type=date]{width:140px;padding:3px 6px}
+tr:hover td{background:#fafbfc}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar > *{width:auto}
+.toolbar input[type=search]{flex:1;min-width:200px}
+.bulk{background:var(--accent-soft);border:1px solid #c7d2fe;border-radius:var(--radius);padding:8px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bulk > select,.bulk > input{width:auto}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px}
+/* kanban */
+.board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}
+.col{background:#eceef2;border-radius:var(--radius);min-width:250px;width:250px;flex-shrink:0;display:flex;flex-direction:column;max-height:calc(100vh - 150px)}
+.col h3{font-size:13px;margin:0;padding:10px 12px;display:flex;align-items:center;gap:8px}
+.col h3 .dot{width:9px;height:9px;border-radius:50%}
+.col h3 .c{margin-left:auto;color:var(--muted);font-weight:500}
+.col .cards{padding:0 8px 8px;overflow-y:auto;min-height:60px;flex:1}
+.kc{background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:7px;cursor:grab}
+.kc:active{cursor:grabbing}
+.kc b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kc .meta{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-top:4px;gap:6px}
+.kc.late{border-left:3px solid var(--red)}
+.kc.late .dias{color:var(--red);font-weight:600}
+.kc .wa-mini{border:0;background:var(--wa);color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:12px}
+.more{font-size:12px;color:var(--muted);text-align:center;padding:6px}
+.sortable-ghost{opacity:.4}
+/* drawer & modal */
+.drawer-bg{position:fixed;inset:0;background:rgba(15,17,25,.35);z-index:40}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:480px;max-width:100vw;background:#fff;z-index:41;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(0,0,0,.08)}
+.drawer header{padding:16px 18px;border-bottom:1px solid var(--line)}
+.drawer header h2{margin:0;font-size:18px}
+.drawer .body{padding:16px 18px;overflow-y:auto;flex:1}
+.drawer footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:space-between}
+.sec{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;margin:18px 0 10px}
+.sec:first-child{margin-top:0}
+.tl{border-left:2px solid var(--line);margin-left:6px;padding-left:14px}
+.tl .ev{position:relative;margin-bottom:12px}
+.tl .ev:before{content:"";position:absolute;left:-20px;top:5px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid var(--muted)}
+.tl .ev.whatsapp:before{border-color:var(--wa)}
+.tl .ev.resposta:before{border-color:var(--accent);background:var(--accent)}
+.tl .ev.etapa:before{border-color:var(--amber)}
+.tl .ev small{color:var(--muted);font-size:12px;display:block}
+.tl .ev p{margin:2px 0 0;white-space:pre-wrap;font-size:13px}
+.modal-bg{position:fixed;inset:0;background:rgba(15,17,25,.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:12px;padding:20px;width:440px;max-width:100%;max-height:90vh;overflow:auto}
+.modal h3{margin:0 0 14px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#151821;color:#fff;padding:10px 16px;border-radius:8px;z-index:90;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast.on{opacity:1}
+/* auth */
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.center .card{width:400px;max-width:100%;padding:28px}
+.center h1{margin-bottom:6px}
+/* misc */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tabs button{border:0;background:none;padding:8px 12px;cursor:pointer;border-bottom:2px solid transparent;font-weight:500;color:var(--muted)}
+.tabs button.on{color:var(--ink);border-color:var(--accent)}
+.chips button{border:1px dashed var(--line);background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:12px;margin:0 4px 4px 0}
+.preview{background:#e7f8ec;border-radius:10px;padding:10px 12px;white-space:pre-wrap;font-size:13.5px}
+.hbar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.hbar .l{width:110px;flex-shrink:0}
+.hbar .t{flex:1;background:var(--soft);border-radius:4px;height:18px;overflow:hidden}
+.hbar .t i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.hbar .v{width:60px;text-align:right;font-variant-numeric:tabular-nums}
+.vbars{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px}
+.vbars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--muted)}
+.vbars div i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px}
+.vbars div b{font-weight:600;color:var(--ink);font-size:11px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.warn{background:var(--amber-soft);border:1px solid #fde68a;border-radius:8px;padding:10px 12px;font-size:13px}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{position:sticky;top:0;height:auto;flex-direction:row;overflow-x:auto;padding:8px;z-index:30;gap:4px}
+  .brand,.side .foot{display:none}
+  .side a{padding:7px 10px;white-space:nowrap;font-size:13px}
+  main{padding:16px}
+  .two,.grid2{grid-template-columns:1fr}
+  .item{flex-wrap:wrap}
+  .item .acts{width:100%;justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+
+<!-- CONFIGURAÇÃO DA CONEXÃO -->
+<div id="vSetup" class="center hidden">
+  <div class="card">
+    <h1>Conectar ao Supabase</h1>
+    <p class="sub">No Supabase: Project Settings → API. Copie a <b>Project URL</b> e a chave <b>anon public</b>.</p>
+    <label class="f">Project URL<input type="text" id="setUrl" placeholder="https://xxxx.supabase.co"></label>
+    <label class="f">Chave anon public<input type="text" id="setKey" placeholder="eyJhbGciOi..."></label>
+    <button class="btn pri" style="width:100%;justify-content:center" onclick="salvarConexao()">Salvar e continuar</button>
+    <p class="muted" style="font-size:12px;margin-bottom:0">Fica salvo só neste navegador. Para não precisar digitar, preencha SUPABASE_URL e SUPABASE_KEY no topo do script.</p>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="vLogin" class="center hidden">
+  <div class="card">
+    <h1>Entrar</h1>
+    <p class="sub">Use o usuário criado em Authentication → Users no Supabase.</p>
+    <form onsubmit="event.preventDefault();entrar()">
+      <label class="f">E-mail<input type="email" id="lgEmail" required autocomplete="username"></label>
+      <label class="f">Senha<input type="password" id="lgPass" required autocomplete="current-password"></label>
+      <button class="btn pri" style="width:100%;justify-content:center">Entrar</button>
+    </form>
+    <p style="font-size:12px;margin-bottom:0"><a href="#" onclick="trocarConexao();return false">Trocar conexão do Supabase</a></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="vApp" class="app hidden">
+  <nav class="side" id="nav">
+    <div class="brand">CRM Frio<small>vendas de assinatura</small></div>
+    <a href="#hoje" data-p="hoje">☀️ Hoje <span class="n" id="navHoje"></span></a>
+    <a href="#kanban" data-p="kanban">🗂️ Funil</a>
+    <a href="#leads" data-p="leads">👥 Leads</a>
+    <a href="#templates" data-p="templates">💬 Templates</a>
+    <a href="#importar" data-p="importar">⬆️ Importar</a>
+    <a href="#exclusoes" data-p="exclusoes">🚫 Exclusões</a>
+    <a href="#relatorios" data-p="relatorios">📊 Relatórios</a>
+    <a href="#config" data-p="config">⚙️ Configurações</a>
+    <div class="foot"><span id="userEmail"></span><br><button onclick="sair()">Sair</button></div>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<div id="drawer"></div>
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO — opcional: preencha para não precisar digitar
+   ========================================================= */
+const SUPABASE_URL = '';
+const SUPABASE_KEY = '';
+
+/* ========================================================= */
+const ETAPAS = [
+  {k:'novo',l:'Novo',c:'#94a3b8'},
+  {k:'abordado',l:'Abordado',c:'#60a5fa'},
+  {k:'respondeu',l:'Respondeu',c:'#818cf8'},
+  {k:'interessado',l:'Interessado',c:'#a78bfa'},
+  {k:'teste',l:'Teste/Demo',c:'#f59e0b'},
+  {k:'proposta',l:'Proposta',c:'#fb923c'},
+  {k:'assinante',l:'Assinante',c:'#16a34a'},
+  {k:'perdido',l:'Perdido',c:'#ef4444'},
+];
+const TIPOS_TPL = {primeiro_contato:'Primeiro contato',followup_1:'Follow-up 1',followup_2:'Follow-up 2',followup_3:'Follow-up 3 (último)',oferta_teste:'Oferta de teste',reativacao:'Reativação',geral:'Geral'};
+const DEF_CFG = {limite_diario:30,cadencia:[2,4,7],dias_parado:5,meu_nome:'',
+  planos:[{nome:'Mensal',valor:97}],
+  motivos:['Sem interesse','Preço','Já tem sistema','Não respondeu','Número inválido','Pediu para sair']};
+const STATUS_PAG = ['','Em dia','Pendente','Atrasado','Cancelado'];
+
+let sb = null;
+const S = {leads:[],ints:[],tpls:[],blk:[],config:{...DEF_CFG},page:'hoje',drawer:null,
+  lf:{q:'',etapa:'',tag:'',esp:'',pg:0}, sel:new Set(), imp:null, excTab:'lixeira', relDias:30, tplEdit:null};
+
+/* ---------- utilidades ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const addDays = (s,n) => { const d = new Date(s+'T12:00:00'); d.setDate(d.getDate()+n); return ymd(d); };
+const nowIso = () => new Date().toISOString();
+const daysSince = iso => iso ? Math.floor((Date.now()-new Date(iso).getTime())/864e5) : null;
+const fmtDate = s => { if(!s) return '—'; const d = s.length===10 ? new Date(s+'T12:00:00') : new Date(s); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); };
+const fmtDT = s => s ? new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+const money = v => (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const lead = id => S.leads.find(l => l.id === id);
+const etapa = k => ETAPAS.find(e => e.k === k) || ETAPAS[0];
+const badge = k => { const e = etapa(k); return `<span class="badge" style="background:${e.c}22;color:${e.c}">${e.l}</span>`; };
+const ativos = () => S.leads.filter(l => !l.deleted_at);
+const nomeDe = l => l.nome || l.nome_original?.trim() || fmtTel(l.telefone);
+
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),2200); }
+function erro(e){ console.error(e); toast('Erro: '+(e?.message||e)); }
+
+/* Telefone: só dígitos, com DDI 55, e coloca o 9º dígito em celular antigo */
+function normTel(raw){
+  let d = String(raw||'').replace(/\D/g,'');
+  if(!d) return null;
+  if(d.length===10 || d.length===11) d = '55'+d;
+  if(d.startsWith('55') && d.length===12 && /[6-9]/.test(d[4])) d = d.slice(0,4)+'9'+d.slice(4);
+  if(d.length<10 || d.length>15) return null;
+  return d;
+}
+function fmtTel(d){
+  d = String(d||'');
+  if(d.startsWith('55') && d.length===13) return `(${d.slice(2,4)}) ${d.slice(4,9)}-${d.slice(9)}`;
+  if(d.startsWith('55') && d.length===12) return `(${d.slice(2,4)}) ${d.slice(4,8)}-${d.slice(8)}`;
+  return '+'+d;
+}
+/* Nome tratado: tira emoji, símbolos, "~" e capitaliza */
+function limparNome(s){
+  s = String(s||'').replace(/[^\p{L}\s'.-]/gu,' ').replace(/\s+/g,' ').trim();
+  if(s.replace(/[^\p{L}]/gu,'').length < 2) return '';
+  return s.toLowerCase().split(' ').map(w => w.length>2 ? w[0].toUpperCase()+w.slice(1) : w).join(' ').replace(/^./, c=>c.toUpperCase());
+}
+const limparOrigem = s => String(s||'').replace(/^\s*\d+\s+/,'').trim();
+const waUrl = (tel, txt) => `https://wa.me/${tel}` + (txt ? `?text=${encodeURIComponent(txt)}` : '');
+
+/* Preenche variáveis do template */
+function preencher(txt, l){
+  const pn = (l.nome||'').split(' ')[0];
+  let t = txt;
+  if(!pn) t = t.replace(/\s*\{nome\}/g,'');
+  t = t.replace(/\{nome\}/g,pn).replace(/\{grupo\}/g,l.origem||'grupo').replace(/\{segmento\}/g,l.segmento||'')
+       .replace(/\{cidade\}/g,l.cidade||'').replace(/\{meu_nome\}/g,S.config.meu_nome||'');
+  t = t.replace(/^\s*[,!.]\s*/,'').replace(/\s+([,!?.])/g,'$1');
+  return t.charAt(0).toUpperCase()+t.slice(1);
+}
+/* Escolhe template pela etapa (aleatório entre os ativos do tipo) */
+function tipoPara(l){
+  if(l.etapa==='novo') return 'primeiro_contato';
+  if(l.etapa==='abordado') return 'followup_'+Math.min(Math.max(l.tentativas||1,1),3);
+  if(l.etapa==='interessado') return 'oferta_teste';
+  if(l.etapa==='perdido') return 'reativacao';
+  return 'geral';
+}
+function escolherTpl(l){
+  let op = S.tpls.filter(t => t.ativo && t.tipo===tipoPara(l));
+  if(!op.length) op = S.tpls.filter(t => t.ativo && t.tipo==='geral');
+  return op.length ? op[Math.floor(Math.random()*op.length)] : null;
+}
+
+/* ---------- modal genérico ---------- */
+function modal(html){
+  return new Promise(res => {
+    const bg = document.createElement('div'); bg.className='modal-bg';
+    bg.innerHTML = `<div class="modal">${html}</div>`;
+    document.body.appendChild(bg);
+    const fechar = v => { bg.remove(); res(v); };
+    bg.addEventListener('click', e => {
+      if(e.target===bg) return fechar(null);
+      const b = e.target.closest('[data-r]'); if(!b) return;
+      if(b.dataset.r==='ok'){
+        const o={}; bg.querySelectorAll('[name]').forEach(i => o[i.name] = i.type==='checkbox' ? i.checked : i.value);
+        fechar(o);
+      } else fechar(null);
+    });
+    bg.querySelector('input,select,textarea')?.focus();
+  });
+}
+const confirmar = (titulo, txt, ok='Confirmar') => modal(`<h3>${titulo}</h3><p class="muted">${txt}</p><div class="acts"><button class="btn" data-r="x">Cancelar</button><button class="btn pri" data-r="ok">${ok}</button></div>`).then(r => !!r);
+async function pedirMotivo(){
+  const r = await modal(`<h3>Motivo da perda</h3>
+    <label class="f">Motivo<select name="m">${S.config.motivos.map(m=>`<option>${esc(m)}</option>`).join('')}</select></label>
+    <label class="f">Ou escreva outro<input type="text" name="outro"></label>
+    <div class="acts"><button class="btn" data-r="x">Cancelar</button><button class="btn pri" data-r="ok">Marcar como perdido</button></div>`);
+  return r ? (r.outro.trim() || r.m) : null;
+}
+
+/* ---------- banco ---------- */
+async function fetchAll(tabela, cols='*'){
+  let out=[], from=0;
+  for(;;){
+    const {data,error} = await sb.from(tabela).select(cols).order('created_at',{ascending:true}).order(tabela==='bloqueados'?'telefone':'id',{ascending:true}).range(from,from+999);
+    if(error) throw error;
+    out = out.concat(data);
+    if(data.length<1000) break;
+    from += 1000;
+  }
+  return out;
+}
+async function carregarTudo(){
+  $('main').innerHTML = '<p class="muted">Carregando…</p>';
+  try{
+    const [leads,ints,tpls,blk,cfg] = await Promise.all([
+      fetchAll('leads'), fetchAll('interacoes','id,lead_id,tipo,template_id,resultado,texto,created_at'),
+      fetchAll('templates'), fetchAll('bloqueados'),
+      sb.from('config').select('data').eq('id',1).maybeSingle()
+    ]);
+    Object.assign(S,{leads,ints,tpls,blk});
+    S.config = {...DEF_CFG, ...(cfg.data?.data||{})};
+  }catch(e){
+    $('main').innerHTML = `<div class="warn"><b>Não consegui ler o banco.</b> Você rodou o arquivo <code>supabase.sql</code> no SQL Editor?<br><small>${esc(e.message||e)}</small></div>`;
+    throw e;
+  }
+}
+async function updLead(id, patch){
+  const {data,error} = await sb.from('leads').update(patch).eq('id',id).select().single();
+  if(error) throw error;
+  Object.assign(lead(id), data);
+  return data;
+}
+async function addInt(lead_id, tipo, extra={}){
+  const {data,error} = await sb.from('interacoes').insert({lead_id,tipo,...extra}).select().single();
+  if(error) throw error;
+  S.ints.push(data);
+  return data;
+}
+async function setEtapa(id, nova, extra={}){
+  const l = lead(id), velha = l.etapa;
+  const patch = {...extra};
+  if(velha !== nova){
+    patch.etapa = nova; patch.etapa_desde = nowIso();
+    if(nova==='perdido' || nova==='assinante') patch.proximo_followup = null;
+    if(nova==='assinante' && !l.inicio_assinatura) patch.inicio_assinatura = today();
+    if(nova!=='perdido') patch.motivo_perda = null;
+  }
+  if(!Object.keys(patch).length) return;
+  await updLead(id, patch);
+  if(velha !== nova) await addInt(id,'etapa',{texto:`${etapa(velha).l} → ${etapa(nova).l}${patch.motivo_perda ? ' ('+patch.motivo_perda+')' : ''}`});
+}
+
+/* ---------- ações de lead ---------- */
+async function enviar(id, tplId){
+  const l = lead(id);
+  const tpl = tplId==='' ? null : (tplId ? S.tpls.find(t=>t.id===tplId) : escolherTpl(l));
+  const txt = tpl ? preencher(tpl.texto, l) : '';
+  window.open(waUrl(l.telefone, txt), '_blank');   // abre antes de qualquer await (evita bloqueio de pop-up)
+  try{
+    const n = (l.tentativas||0)+1, primeiro = l.etapa==='novo';
+    const patch = {tentativas:n, ultimo_contato:nowIso()};
+    if(l.etapa==='novo' || l.etapa==='abordado'){
+      const cad = S.config.cadencia;
+      patch.proximo_followup = n <= cad.length ? addDays(today(), cad[n-1]) : null;
+    }
+    if(primeiro){ patch.etapa='abordado'; patch.etapa_desde=nowIso(); }
+    await updLead(id, patch);
+    await addInt(id,'whatsapp',{template_id:tpl?.id||null, resultado:primeiro?'primeiro':'enviado', texto:txt});
+    toast('Registrado no histórico');
+    render();
+  }catch(e){ erro(e); }
+}
+async function resultado(id, r){
+  const l = lead(id);
+  try{
+    if(r==='respondeu'){
+      const ult = [...S.ints].reverse().find(i => i.lead_id===id && i.tipo==='whatsapp');
+      await addInt(id,'resposta',{template_id:ult?.template_id||null, resultado:'respondeu'});
+      const extra = {proximo_followup: addDays(today(),1)};
+      await setEtapa(id, ['novo','abordado'].includes(l.etapa) ? 'respondeu' : l.etapa, extra);
+      toast('Boa! Movido para Respondeu');
+    }else if(r==='perdido'){
+      const m = await pedirMotivo(); if(!m) return;
+      await setEtapa(id,'perdido',{motivo_perda:m});
+    }else if(r==='invalido'){
+      await setEtapa(id,'perdido',{motivo_perda:'Número inválido'});
+    }else if(r==='adiar'){
+      await updLead(id,{proximo_followup:addDays(today(),1)}); toast('Adiado para amanhã');
+    }
+    render();
+  }catch(e){ erro(e); }
+}
+async function excluir(id){
+  if(!await confirmar('Mover para a lixeira?','O lead some das listas. Dá para restaurar em Exclusões por 30 dias.','Mover')) return;
+  try{ await updLead(id,{deleted_at:nowIso()}); fecharLead(); toast('Movido para a lixeira'); render(); }catch(e){ erro(e); }
+}
+async function bloquear(id){
+  const l = lead(id);
+  const r = await modal(`<h3>Não contatar mais</h3><p class="muted">${esc(nomeDe(l))} vai para a lista de bloqueio e nunca mais será importado(a) ou abordado(a).</p>
+    <label class="f">Motivo<input type="text" name="m" value="Pediu para sair"></label>
+    <div class="acts"><button class="btn" data-r="x">Cancelar</button><button class="btn danger" data-r="ok">Bloquear</button></div>`);
+  if(!r) return;
+  try{
+    const {data,error} = await sb.from('bloqueados').upsert({telefone:l.telefone, motivo:r.m}).select().single();
+    if(error) throw error;
+    S.blk = S.blk.filter(b=>b.telefone!==l.telefone).concat(data);
+    await setEtapa(id,'perdido',{motivo_perda:r.m||'Pediu para sair', deleted_at:nowIso(), proximo_followup:null});
+    fecharLead(); toast('Bloqueado'); render();
+  }catch(e){ erro(e); }
+}
+async function novoLead(){
+  const r = await modal(`<h3>Novo lead</h3>
+    <label class="f">Nome<input type="text" name="nome"></label>
+    <label class="f">WhatsApp (com DDD)<input type="text" name="tel" placeholder="41 99999-9999"></label>
+    <label class="f">Origem<input type="text" name="origem" placeholder="Instagram, indicação…"></label>
+    <div class="acts"><button class="btn" data-r="x">Cancelar</button><button class="btn pri" data-r="ok">Criar</button></div>`);
+  if(!r) return;
+  const tel = normTel(r.tel);
+  if(!tel) return toast('Telefone inválido');
+  if(S.blk.some(b=>b.telefone===tel)) return toast('Esse número está na lista de bloqueio');
+  if(S.leads.some(l=>l.telefone===tel)) return toast('Esse número já existe');
+  try{
+    const {data,error} = await sb.from('leads').insert({telefone:tel,nome:limparNome(r.nome),nome_original:r.nome,origem:r.origem}).select().single();
+    if(error) throw error;
+    S.leads.push(data); render(); abrirLead(data.id);
+  }catch(e){ erro(e); }
+}
+
+/* ---------- roteamento ---------- */
+const PAGES = {hoje:pHoje,kanban:pKanban,leads:pLeads,templates:pTemplates,importar:pImportar,exclusoes:pExclusoes,relatorios:pRelatorios,config:pConfig};
+function route(){
+  const p = location.hash.slice(1);
+  S.page = PAGES[p] ? p : 'hoje';
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('on', a.dataset.p===S.page));
+  render();
+}
+function render(){
+  PAGES[S.page]();
+  if(S.drawer) renderLead();
+  const pend = filaHoje();
+  $('navHoje').textContent = pend.total || '';
+}
+window.addEventListener('hashchange', route);
+
+/* =========================================================
+   PÁGINA: HOJE
+   ========================================================= */
+function intsHoje(tipo){ const t=today(); return S.ints.filter(i => i.tipo===tipo && ymd(new Date(i.created_at))===t); }
+function filaHoje(){
+  const t = today(), a = ativos();
+  const novosHoje = intsHoje('whatsapp').filter(i=>i.resultado==='primeiro').length;
+  const restante = Math.max(S.config.limite_diario - novosHoje, 0);
+  const follow = a.filter(l => l.proximo_followup && l.proximo_followup<=t && !['novo','assinante','perdido'].includes(l.etapa))
+                  .sort((x,y)=>x.proximo_followup.localeCompare(y.proximo_followup));
+  const novos = a.filter(l => l.etapa==='novo').slice(0, restante);
+  const esgot = a.filter(l => l.etapa==='abordado' && !l.proximo_followup);
+  const trial = a.filter(l => l.etapa==='teste' && l.fim_trial && l.fim_trial <= addDays(t,3));
+  return {novosHoje, restante, follow, novos, esgot, trial, total: follow.length + novos.length};
+}
+function linha(l, modo){
+  const info = [fmtTel(l.telefone), l.tentativas ? `${l.tentativas} envio(s)` : '', l.ultimo_contato ? 'último ' + fmtDate(l.ultimo_contato) : ''].filter(Boolean).join(' · ');
+  let acts;
+  if(modo==='feito'){
+    acts = ['novo','abordado'].includes(l.etapa)
+      ? `<button class="btn sm" onclick="resultado('${l.id}','respondeu')">✅ Respondeu</button>
+         <button class="btn sm" onclick="resultado('${l.id}','perdido')">Sem interesse</button>
+         <button class="btn sm" onclick="resultado('${l.id}','invalido')">Nº inválido</button>
+         <button class="btn sm danger" onclick="bloquear('${l.id}')">Pediu p/ sair</button>`
+      : badge(l.etapa);
+  }else if(modo==='esgot'){
+    acts = `<button class="btn sm wa" onclick="enviar('${l.id}')">WhatsApp</button><button class="btn sm" onclick="setEtapa('${l.id}','perdido',{motivo_perda:'Não respondeu'}).then(render)">Marcar perdido</button>`;
+  }else{
+    acts = `<button class="btn sm wa" onclick="enviar('${l.id}')">💬 WhatsApp</button>
+            <button class="btn sm" onclick="resultado('${l.id}','adiar')">Adiar</button>
+            <button class="btn sm" onclick="resultado('${l.id}','invalido')" title="Número inválido">✕</button>`;
+  }
+  return `<div class="item"><div class="who" onclick="abrirLead('${l.id}')"><b>${esc(nomeDe(l))} ${modo!=='feito'?badge(l.etapa):''}</b><span class="muted">${esc(info)}</span></div><div class="acts">${acts}</div></div>`;
+}
+function bloco(titulo, arr, modo, vazio){
+  return `<h2>${titulo} <span class="muted" style="font-weight:400">(${arr.length})</span></h2>
+    <div class="list">${arr.length ? arr.map(l=>linha(l,modo)).join('') : `<div class="empty">${vazio}</div>`}</div>`;
+}
+function pHoje(){
+  const f = filaHoje(), lim = S.config.limite_diario;
+  const feitosIds = [...new Set(intsHoje('whatsapp').map(i=>i.lead_id).reverse())];
+  const feitos = feitosIds.map(lead).filter(l => l && !l.deleted_at);
+  const resp = intsHoje('resposta').length;
+  const semTpl = !S.tpls.some(t=>t.ativo && t.tipo==='primeiro_contato');
+  $('main').innerHTML = `
+    <h1>Hoje</h1>
+    <p class="sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}. Clique em WhatsApp: a mensagem abre pronta e o contato vai para o histórico.</p>
+    ${semTpl ? '<div class="warn" style="margin-bottom:12px">Você não tem template ativo de primeiro contato. Crie um em <a href="#templates">Templates</a>.</div>' : ''}
+    ${!S.config.meu_nome ? '<div class="warn" style="margin-bottom:12px">Preencha <b>seu nome</b> em <a href="#config">Configurações</a> para a variável {meu_nome} funcionar.</div>' : ''}
+    <div class="kpis">
+      <div class="kpi"><b>${f.novosHoje}/${lim}</b><span>novos abordados hoje</span><div class="bar"><i style="width:${Math.min(100,f.novosHoje/lim*100)}%"></i></div></div>
+      <div class="kpi"><b>${f.follow.length}</b><span>follow-ups pendentes</span></div>
+      <div class="kpi"><b>${resp}</b><span>respostas hoje</span></div>
+      <div class="kpi"><b>${ativos().filter(l=>l.etapa==='novo').length}</b><span>leads nunca abordados</span></div>
+    </div>
+    ${f.trial.length ? bloco('⏰ Testes terminando (3 dias)', f.trial, 'fila', '') : ''}
+    ${bloco('🔁 Follow-ups de hoje', f.follow, 'fila', 'Nenhum follow-up vencido. 🎉')}
+    ${bloco('🆕 Novos para abordar', f.novos, 'fila', f.restante ? 'Sem leads novos. Importe mais em Importar.' : 'Limite diário atingido. Volte amanhã (ou aumente em Configurações).')}
+    ${bloco('✔️ Contatados hoje: marque o resultado', feitos, 'feito', 'Ninguém contatado ainda hoje.')}
+    ${f.esgot.length ? bloco('😶 Sem resposta: tentativas esgotadas', f.esgot.slice(0,30), 'esgot', '') + (f.esgot.length>1?`<div style="margin-top:8px"><button class="btn sm" onclick="perderEsgotados()">Marcar todos os ${f.esgot.length} como perdidos</button></div>`:'') : ''}
+  `;
+}
+async function perderEsgotados(){
+  const arr = filaHoje().esgot;
+  if(!await confirmar('Marcar como perdidos?',`${arr.length} leads que não responderam a nenhuma tentativa vão para Perdido (motivo: Não respondeu).`)) return;
+  try{ for(const l of arr) await setEtapa(l.id,'perdido',{motivo_perda:'Não respondeu'}); render(); }catch(e){ erro(e); }
+}
+
+/* =========================================================
+   PÁGINA: FUNIL (KANBAN)
+   ========================================================= */
+function pKanban(){
+  const a = ativos(), lim = S.config.dias_parado;
+  const busca = S.kq || '';
+  const filtro = l => !busca || norm(nomeDe(l)+' '+l.telefone).includes(norm(busca));
+  $('main').innerHTML = `
+    <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
+      <div><h1>Funil</h1><p class="sub" style="margin:0">Arraste os cards entre as etapas. Borda vermelha = parado há mais de ${lim} dias.</p></div>
+      <input type="search" placeholder="Filtrar…" value="${esc(busca)}" style="width:220px" oninput="S.kq=this.value;clearTimeout(S._kt);S._kt=setTimeout(()=>{pKanban();document.querySelector('main input[type=search]').focus()},250)">
+    </div>
+    <div class="board">${ETAPAS.map(e => {
+      let col = a.filter(l=>l.etapa===e.k && filtro(l));
+      col.sort((x,y)=>(y.etapa_desde||'').localeCompare(x.etapa_desde||''));
+      const total = col.length, cap = e.k==='novo'||e.k==='perdido' ? 40 : 300;
+      const val = e.k==='assinante' ? ' · '+money(col.reduce((s,l)=>s+(+l.valor_mensal||0),0))+'/mês' : '';
+      return `<div class="col"><h3><span class="dot" style="background:${e.c}"></span>${e.l}<span class="c">${total}${val}</span></h3>
+        <div class="cards" data-etapa="${e.k}">${col.slice(0,cap).map(l => {
+          const d = daysSince(l.etapa_desde) ?? 0;
+          const late = d>lim && !['novo','assinante','perdido'].includes(e.k);
+          const extra = e.k==='perdido' ? esc(l.motivo_perda||'') : e.k==='assinante' ? esc(l.plano||'') : fmtTel(l.telefone);
+          return `<div class="kc ${late?'late':''}" data-id="${l.id}" onclick="abrirLead('${l.id}')">
+            <b>${esc(nomeDe(l))}</b>
+            <div class="meta"><span>${extra}</span><span class="dias">${d}d</span>
+            <button class="wa-mini" onclick="event.stopPropagation();enviar('${l.id}')">WA</button></div></div>`;
+        }).join('')}${total>cap?`<div class="more">+${total-cap} (veja em Leads)</div>`:''}</div></div>`;
+    }).join('')}</div>`;
+  document.querySelectorAll('.cards').forEach(el => new Sortable(el, {
+    group:'k', animation:150, ghostClass:'sortable-ghost',
+    onEnd: async ev => {
+      const id = ev.item.dataset.id, nova = ev.to.dataset.etapa;
+      if(ev.from===ev.to) return;
+      try{
+        if(nova==='perdido'){
+          const m = await pedirMotivo();
+          if(!m) return pKanban();
+          await setEtapa(id,'perdido',{motivo_perda:m});
+        }else{
+          await setEtapa(id,nova);
+        }
+        render();
+        if(nova==='assinante'){ abrirLead(id); toast('Preencha plano e valor da assinatura'); }
+      }catch(e){ erro(e); pKanban(); }
+    }
+  }));
+}
+
+/* =========================================================
+   PÁGINA: LEADS (TABELA)
+   ========================================================= */
+const POR_PAG = 50;
+function filtrarLeads(){
+  const f = S.lf, q = norm(f.q), t = today();
+  return ativos().filter(l =>
+    (!f.etapa || l.etapa===f.etapa) &&
+    (!f.tag || (l.tags||[]).includes(f.tag)) &&
+    (f.esp==='' ||
+     (f.esp==='nunca' && !l.tentativas) ||
+     (f.esp==='sem7' && l.etapa==='abordado' && daysSince(l.ultimo_contato)>=7) ||
+     (f.esp==='atrasado' && l.proximo_followup && l.proximo_followup<t) ||
+     (f.esp==='esgot' && l.etapa==='abordado' && !l.proximo_followup) ||
+     (f.esp==='semnome' && !l.nome)) &&
+    (!q || norm([l.nome,l.nome_original,l.telefone,l.cidade,l.segmento,l.origem,(l.tags||[]).join(' ')].join(' ')).includes(q))
+  );
+}
+function pLeads(){
+  const tags = [...new Set(ativos().flatMap(l=>l.tags||[]))].sort();
+  const f = S.lf;
+  $('main').innerHTML = `
+    <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
+      <div><h1>Leads</h1><p class="sub" style="margin:0">${ativos().length} leads ativos</p></div>
+      <div class="row-flex"><button class="btn" onclick="exportarCSV()">Exportar CSV</button><button class="btn pri" onclick="novoLead()">+ Novo lead</button></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="lq" placeholder="Buscar nome, telefone, tag, cidade…" value="${esc(f.q)}">
+      <select id="le"><option value="">Todas as etapas</option>${ETAPAS.map(e=>`<option value="${e.k}" ${f.etapa===e.k?'selected':''}>${e.l}</option>`).join('')}</select>
+      <select id="lt"><option value="">Todas as tags</option>${tags.map(t=>`<option ${f.tag===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      <select id="ls">
+        ${[['','Sem filtro especial'],['nunca','Nunca abordados'],['sem7','Sem resposta há 7+ dias'],['atrasado','Follow-up atrasado'],['esgot','Tentativas esgotadas'],['semnome','Sem nome']].map(([v,t])=>`<option value="${v}" ${f.esp===v?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div id="bulk"></div>
+    <div id="ltbl"></div>`;
+  const upd = () => { f.pg=0; tabelaLeads(); };
+  $('lq').oninput = e => { f.q=e.target.value; clearTimeout(S._lt); S._lt=setTimeout(upd,200); };
+  $('le').onchange = e => { f.etapa=e.target.value; upd(); };
+  $('lt').onchange = e => { f.tag=e.target.value; upd(); };
+  $('ls').onchange = e => { f.esp=e.target.value; upd(); };
+  tabelaLeads();
+}
+function tabelaLeads(){
+  const arr = filtrarLeads(), f = S.lf;
+  const pags = Math.max(1, Math.ceil(arr.length/POR_PAG));
+  if(f.pg>=pags) f.pg = pags-1;
+  const pg = arr.slice(f.pg*POR_PAG, (f.pg+1)*POR_PAG);
+  [...S.sel].forEach(id => { const l = lead(id); if(!l || l.deleted_at) S.sel.delete(id); });
+  const todos = pg.length && pg.every(l=>S.sel.has(l.id));
+  $('ltbl').innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th><input type="checkbox" ${todos?'checked':''} onchange="selPagina(this.checked)"></th><th>Nome</th><th>WhatsApp</th><th>Etapa</th><th>Tags</th><th>Envios</th><th>Último contato</th><th>Próx. follow-up</th><th></th></tr></thead>
+    <tbody>${pg.map(l=>`<tr>
+      <td><input type="checkbox" ${S.sel.has(l.id)?'checked':''} onchange="selLead('${l.id}',this.checked)"></td>
+      <td class="nm" onclick="abrirLead('${l.id}')" title="${esc(l.nome_original)}">${esc(nomeDe(l))}</td>
+      <td>${fmtTel(l.telefone)}</td>
+      <td>${badge(l.etapa)}</td>
+      <td>${(l.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</td>
+      <td>${l.tentativas||0}</td>
+      <td>${fmtDate(l.ultimo_contato)}</td>
+      <td><input type="date" value="${l.proximo_followup||''}" onchange="mudarFollow('${l.id}',this.value)"></td>
+      <td><button class="btn sm wa" onclick="enviar('${l.id}')">WA</button></td>
+    </tr>`).join('') || `<tr><td colspan="9" class="empty">Nenhum lead encontrado.</td></tr>`}</tbody></table></div>
+    <div class="pager"><span class="muted">${arr.length} resultado(s) · página ${f.pg+1}/${pags}</span>
+      <button class="btn sm" ${f.pg===0?'disabled':''} onclick="S.lf.pg--;tabelaLeads()">‹</button>
+      <button class="btn sm" ${f.pg>=pags-1?'disabled':''} onclick="S.lf.pg++;tabelaLeads()">›</button>
+      <button class="btn sm" onclick="selFiltro()">Selecionar todos os ${arr.length}</button></div>`;
+  barraMassa();
+}
+function selLead(id,on){ on ? S.sel.add(id) : S.sel.delete(id); barraMassa(); }
+function selPagina(on){ filtrarLeads().slice(S.lf.pg*POR_PAG,(S.lf.pg+1)*POR_PAG).forEach(l=>on?S.sel.add(l.id):S.sel.delete(l.id)); tabelaLeads(); }
+function selFiltro(){ filtrarLeads().forEach(l=>S.sel.add(l.id)); tabelaLeads(); }
+function barraMassa(){
+  const n = S.sel.size, el = $('bulk'); if(!el) return;
+  el.innerHTML = n ? `<div class="bulk"><b>${n} selecionado(s)</b>
+    <select id="bkE"><option value="">Mover para etapa…</option>${ETAPAS.filter(e=>e.k!=='perdido').map(e=>`<option value="${e.k}">${e.l}</option>`).join('')}</select>
+    <input type="text" id="bkT" placeholder="Adicionar tag" style="width:140px">
+    <button class="btn sm" onclick="massa('tag')">Aplicar tag</button>
+    <button class="btn sm danger" onclick="massa('excluir')">Excluir</button>
+    <button class="btn sm" onclick="S.sel.clear();tabelaLeads()">Limpar seleção</button></div>` : '';
+  if(n) $('bkE').onchange = () => massa('etapa');
+}
+async function massa(acao){
+  const ids = [...S.sel];
+  try{
+    if(acao==='etapa'){
+      const e = $('bkE').value; if(!e) return;
+      const mudar = ids.filter(id => lead(id).etapa!==e);
+      for(let i=0;i<mudar.length;i+=200){
+        const parte = mudar.slice(i,i+200);
+        const antes = Object.fromEntries(parte.map(id=>[id,lead(id).etapa]));
+        const patch = {etapa:e, etapa_desde:nowIso(), ...(e==='assinante'?{proximo_followup:null}:{}), motivo_perda:null};
+        const {data,error} = await sb.from('leads').update(patch).in('id',parte).select(); if(error) throw error;
+        data.forEach(d=>Object.assign(lead(d.id),d));
+        const {data:ins,error:e2} = await sb.from('interacoes').insert(parte.map(id=>({lead_id:id,tipo:'etapa',texto:`${etapa(antes[id]).l} → ${etapa(e).l} (em massa)`}))).select();
+        if(e2) throw e2; S.ints.push(...ins);
+      }
+      toast(`${mudar.length} lead(s) movidos`);
+    }else if(acao==='tag'){
+      const t = $('bkT').value.trim(); if(!t) return toast('Digite a tag');
+      for(const id of ids){ const l = lead(id); if(!(l.tags||[]).includes(t)) await updLead(id,{tags:[...(l.tags||[]),t]}); }
+      toast('Tag aplicada');
+    }else if(acao==='excluir'){
+      if(!await confirmar('Mover para a lixeira?',`${ids.length} lead(s) vão para a lixeira (restauráveis por 30 dias).`,'Mover')) return;
+      const agora = nowIso();
+      for(let i=0;i<ids.length;i+=200){
+        const parte = ids.slice(i,i+200);
+        const {error} = await sb.from('leads').update({deleted_at:agora}).in('id',parte); if(error) throw error;
+        parte.forEach(id=>lead(id).deleted_at=agora);
+      }
+      S.sel.clear(); toast('Movidos para a lixeira');
+    }
+    render();
+  }catch(e){ erro(e); }
+}
+async function mudarFollow(id, v){ try{ await updLead(id,{proximo_followup:v||null}); toast('Follow-up atualizado'); }catch(e){ erro(e); } }
+function exportarCSV(){
+  const arr = filtrarLeads();
+  const cols = ['nome','nome_original','telefone','etapa','tags','origem','segmento','cidade','tentativas','ultimo_contato','proximo_followup','plano','valor_mensal','motivo_perda'];
+  const csv = Papa.unparse(arr.map(l=>cols.map(c=>Array.isArray(l[c])?l[c].join(';'):(l[c]??''))), {header:false});
+  const blob = new Blob(['﻿'+cols.join(',')+'\n'+csv],{type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`leads-${today()}.csv`; a.click();
+}
+
+/* =========================================================
+   FICHA DO LEAD (painel lateral)
+   ========================================================= */
+function abrirLead(id){ S.drawer = id; renderLead(); }
+function fecharLead(){ S.drawer = null; $('drawer').innerHTML=''; }
+function renderLead(){
+  const l = lead(S.drawer); if(!l){ return fecharLead(); }
+  const hist = S.ints.filter(i=>i.lead_id===l.id).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const tplSug = escolherTpl(l);
+  const bloq = S.blk.some(b=>b.telefone===l.telefone);
+  const opTpl = `<option value="">Sem mensagem (só abrir conversa)</option>` + Object.entries(TIPOS_TPL).map(([k,lbl]) => {
+    const ts = S.tpls.filter(t=>t.ativo&&t.tipo===k); if(!ts.length) return '';
+    return `<optgroup label="${lbl}">${ts.map(t=>`<option value="${t.id}" ${tplSug?.id===t.id?'selected':''}>${esc(t.nome)}</option>`).join('')}</optgroup>`;
+  }).join('');
+  const nomeTpl = id => S.tpls.find(t=>t.id===id)?.nome;
+  const ev = i => {
+    const tit = {whatsapp:'💬 WhatsApp enviado',resposta:'✅ Respondeu',etapa:'↪ Mudou de etapa',nota:'📝 Nota'}[i.tipo]||i.tipo;
+    const tn = i.template_id && nomeTpl(i.template_id) ? ` · ${esc(nomeTpl(i.template_id))}` : '';
+    return `<div class="ev ${i.tipo}"><small>${fmtDT(i.created_at)}${tn}</small><b style="font-size:13px">${tit}</b>${i.texto?`<p>${esc(i.texto)}</p>`:''}</div>`;
+  };
+  const fld = (k,lbl,type='text') => `<label class="f">${lbl}<input type="${type}" data-k="${k}" value="${esc(l[k]??'')}"></label>`;
+  $('drawer').innerHTML = `<div class="drawer-bg" onclick="fecharLead()"></div>
+  <aside class="drawer">
+    <header>
+      <div class="row-flex" style="justify-content:space-between;align-items:flex-start">
+        <div style="min-width:0"><h2>${esc(nomeDe(l))}</h2><div class="muted">${fmtTel(l.telefone)} ${l.deleted_at?'· <b style="color:var(--red)">na lixeira</b>':''} ${bloq?'· <b style="color:var(--red)">bloqueado</b>':''}</div></div>
+        <button class="btn sm" onclick="fecharLead()">✕</button>
+      </div>
+      <div class="row-flex" style="margin-top:12px">
+        <select id="dEtapa" style="width:auto">${ETAPAS.map(e=>`<option value="${e.k}" ${l.etapa===e.k?'selected':''}>${e.l}</option>`).join('')}</select>
+        <span class="muted" style="font-size:12px">há ${daysSince(l.etapa_desde)??0} dias${l.motivo_perda?' · '+esc(l.motivo_perda):''}</span>
+      </div>
+      <div class="row-flex" style="margin-top:10px;flex-wrap:nowrap">
+        <select id="dTpl">${opTpl}</select>
+        <button class="btn wa" onclick="enviar('${l.id}',$('dTpl').value)">💬 WhatsApp</button>
+      </div>
+      <div id="dPrev" class="preview" style="margin-top:8px"></div>
+      ${['novo','abordado'].includes(l.etapa) && l.tentativas ? `<div class="row-flex" style="margin-top:8px"><button class="btn sm" onclick="resultado('${l.id}','respondeu')">✅ Respondeu</button><button class="btn sm" onclick="resultado('${l.id}','perdido')">Sem interesse</button></div>`:''}
+    </header>
+    <div class="body">
+      <div class="sec">Próxima ação</div>
+      <div class="row-flex"><input type="date" data-k="proximo_followup" value="${l.proximo_followup||''}" style="width:170px">
+        <button class="btn sm" onclick="document.querySelector('[data-k=proximo_followup]').value='${addDays(today(),1)}'">Amanhã</button>
+        <button class="btn sm" onclick="document.querySelector('[data-k=proximo_followup]').value='${addDays(today(),3)}'">+3d</button>
+        <button class="btn sm" onclick="document.querySelector('[data-k=proximo_followup]').value='${addDays(today(),7)}'">+7d</button></div>
+
+      <div class="sec">Dados</div>
+      <div class="grid2">${fld('nome','Nome (usado em {nome})')}${fld('telefone','WhatsApp')}</div>
+      <label class="f">Nome original (da planilha)<input type="text" value="${esc(l.nome_original||'')}" disabled></label>
+      <div class="grid2">${fld('segmento','Segmento')}${fld('cidade','Cidade')}${fld('instagram','Instagram')}${fld('origem','Origem')}</div>
+      <label class="f">Tags (separadas por vírgula)<input type="text" data-k="tags" value="${esc((l.tags||[]).join(', '))}"></label>
+      <label class="f">Observações<textarea data-k="observacoes">${esc(l.observacoes||'')}</textarea></label>
+
+      <div class="sec">Assinatura</div>
+      <div class="grid2">
+        <label class="f">Plano<select data-k="plano" onchange="const p=S.config.planos.find(p=>p.nome===this.value);if(p)document.querySelector('[data-k=valor_mensal]').value=p.valor">
+          <option value=""></option>${S.config.planos.map(p=>`<option ${l.plano===p.nome?'selected':''}>${esc(p.nome)}</option>`).join('')}
+          ${l.plano && !S.config.planos.some(p=>p.nome===l.plano)?`<option selected>${esc(l.plano)}</option>`:''}</select></label>
+        ${fld('valor_mensal','Valor (R$)','number')}
+        ${fld('fim_trial','Fim do teste','date')}
+        ${fld('inicio_assinatura','Início da assinatura','date')}
+        <label class="f">Pagamento<select data-k="status_pagamento">${STATUS_PAG.map(s=>`<option ${l.status_pagamento===s?'selected':''}>${s}</option>`).join('')}</select></label>
+      </div>
+      <button class="btn pri" onclick="salvarLead()">Salvar alterações</button>
+
+      <div class="sec">Histórico</div>
+      <div class="row-flex" style="margin-bottom:12px;flex-wrap:nowrap"><input type="text" id="dNota" placeholder="Anotar algo (ligação, resposta, objeção…)"><button class="btn" onclick="addNota()">Anotar</button></div>
+      <div class="tl">${hist.map(ev).join('') || '<p class="muted">Sem histórico ainda.</p>'}</div>
+    </div>
+    <footer>
+      ${l.deleted_at ? `<button class="btn" onclick="restaurar('${l.id}')">Restaurar</button>` : `<button class="btn danger" onclick="excluir('${l.id}')">🗑 Excluir</button>`}
+      ${bloq ? '' : `<button class="btn danger" onclick="bloquear('${l.id}')">🚫 Não contatar mais</button>`}
+    </footer>
+  </aside>`;
+  const prev = () => { const t = S.tpls.find(t=>t.id===$('dTpl').value); $('dPrev').textContent = t ? preencher(t.texto,l) : '(abre a conversa sem texto)'; };
+  $('dTpl').onchange = prev; prev();
+  $('dEtapa').onchange = async e => {
+    const nova = e.target.value;
+    try{
+      if(nova==='perdido'){ const m = await pedirMotivo(); if(!m) return renderLead(); await setEtapa(l.id,'perdido',{motivo_perda:m}); }
+      else await setEtapa(l.id, nova);
+      render();
+    }catch(err){ erro(err); }
+  };
+}
+async function salvarLead(){
+  const l = lead(S.drawer), patch = {};
+  document.querySelectorAll('.drawer [data-k]').forEach(i => {
+    let v = i.value.trim(), k = i.dataset.k;
+    if(k==='tags') v = v ? [...new Set(v.split(',').map(s=>s.trim()).filter(Boolean))] : [];
+    else if(k==='valor_mensal') v = v==='' ? null : Number(v);
+    else if(k==='telefone'){ v = normTel(v); if(!v) { patch._bad=1; return; } }
+    else if(v==='') v = null;
+    patch[k] = v;
+  });
+  if(patch._bad) return toast('Telefone inválido');
+  if(patch.telefone!==l.telefone && S.leads.some(x=>x.telefone===patch.telefone)) return toast('Já existe lead com esse telefone');
+  try{ await updLead(l.id, patch); toast('Salvo'); render(); }catch(e){ erro(e); }
+}
+async function addNota(){
+  const t = $('dNota').value.trim(); if(!t) return;
+  try{ await addInt(S.drawer,'nota',{texto:t}); renderLead(); }catch(e){ erro(e); }
+}
+async function restaurar(id){
+  const l = lead(id);
+  if(S.blk.some(b=>b.telefone===l.telefone)) return toast('Está bloqueado. Remova da lista de bloqueio primeiro.');
+  try{ await updLead(id,{deleted_at:null}); toast('Restaurado'); render(); }catch(e){ erro(e); }
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape' && S.drawer && !document.querySelector('.modal-bg')) fecharLead(); });
+
+/* =========================================================
+   PÁGINA: TEMPLATES
+   ========================================================= */
+function statsTpl(id){
+  const env = S.ints.filter(i=>i.tipo==='whatsapp'&&i.template_id===id).length;
+  const resp = S.ints.filter(i=>i.tipo==='resposta'&&i.template_id===id).length;
+  return {env, resp, taxa: env ? Math.round(resp/env*100) : null};
+}
+function pTemplates(){
+  const ed = S.tplEdit;
+  $('main').innerHTML = `
+    <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
+      <div><h1>Templates de mensagem</h1><p class="sub" style="margin:0">Tenha 2 ou 3 versões do primeiro contato: o sistema sorteia uma a cada envio, para o WhatsApp não ver textos repetidos.</p></div>
+      <button class="btn pri" onclick="editarTpl('novo')">+ Novo template</button>
+    </div>
+    ${ed ? formTpl(ed) : ''}
+    ${Object.entries(TIPOS_TPL).map(([k,lbl]) => {
+      const ts = S.tpls.filter(t=>t.tipo===k); if(!ts.length) return '';
+      return `<h2>${lbl}</h2><div class="list">${ts.map(t => { const s = statsTpl(t.id); return `
+        <div class="item" style="align-items:flex-start">
+          <div class="who" onclick="editarTpl('${t.id}')" style="${t.ativo?'':'opacity:.5'}"><b>${esc(t.nome)} ${t.ativo?'':'<span class="badge">inativo</span>'}</b><span class="muted" style="white-space:pre-wrap;display:block">${esc(t.texto)}</span></div>
+          <div style="text-align:right;min-width:110px;font-size:12.5px"><b style="font-size:16px">${s.taxa===null?'—':s.taxa+'%'}</b><br><span class="muted">${s.resp} resp. / ${s.env} envios</span></div>
+        </div>`; }).join('')}</div>`;
+    }).join('')}`;
+  if(ed) $('tTexto').oninput = prevTpl, prevTpl();
+}
+function formTpl(id){
+  const t = id==='novo' ? {nome:'',tipo:'primeiro_contato',texto:'',ativo:true} : S.tpls.find(x=>x.id===id);
+  return `<div class="card" style="margin-bottom:8px"><h2 style="margin-top:0">${id==='novo'?'Novo template':'Editar template'}</h2>
+    <div class="grid2"><label class="f">Nome<input type="text" id="tNome" value="${esc(t.nome)}"></label>
+    <label class="f">Usar quando<select id="tTipo">${Object.entries(TIPOS_TPL).map(([k,l])=>`<option value="${k}" ${t.tipo===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
+    <label class="f">Mensagem<textarea id="tTexto" rows="4">${esc(t.texto)}</textarea></label>
+    <div class="chips">${['{nome}','{grupo}','{segmento}','{cidade}','{meu_nome}'].map(v=>`<button onclick="insVar('${v}')">${v}</button>`).join('')}</div>
+    <div class="muted" style="font-size:12px;margin:6px 0 4px">Prévia (com um lead de exemplo):</div><div class="preview" id="tPrev"></div>
+    <div class="row-flex" style="margin-top:12px;justify-content:space-between">
+      <label class="row-flex"><input type="checkbox" id="tAtivo" ${t.ativo?'checked':''}> Ativo</label>
+      <div class="row-flex">${id!=='novo'?`<button class="btn danger" onclick="apagarTpl('${id}')">Apagar</button>`:''}
+      <button class="btn" onclick="S.tplEdit=null;pTemplates()">Cancelar</button><button class="btn pri" onclick="salvarTpl()">Salvar</button></div>
+    </div></div>`;
+}
+function editarTpl(id){ S.tplEdit=id; pTemplates(); window.scrollTo(0,0); }
+function insVar(v){ const ta=$('tTexto'); const p=ta.selectionStart; ta.value=ta.value.slice(0,p)+v+ta.value.slice(ta.selectionEnd); ta.focus(); ta.selectionStart=ta.selectionEnd=p+v.length; prevTpl(); }
+function prevTpl(){ const ex = ativos().find(l=>l.nome) || {nome:'Maria',origem:'Clube de Compras',segmento:'semijoias'}; $('tPrev').textContent = preencher($('tTexto').value, ex); }
+async function salvarTpl(){
+  const row = {nome:$('tNome').value.trim()||'Sem nome', tipo:$('tTipo').value, texto:$('tTexto').value.trim(), ativo:$('tAtivo').checked};
+  if(!row.texto) return toast('Escreva a mensagem');
+  try{
+    if(S.tplEdit==='novo'){ const {data,error}=await sb.from('templates').insert(row).select().single(); if(error) throw error; S.tpls.push(data); }
+    else { const {data,error}=await sb.from('templates').update(row).eq('id',S.tplEdit).select().single(); if(error) throw error; Object.assign(S.tpls.find(t=>t.id===S.tplEdit),data); }
+    S.tplEdit=null; toast('Template salvo'); pTemplates();
+  }catch(e){ erro(e); }
+}
+async function apagarTpl(id){
+  if(!await confirmar('Apagar template?','O histórico de envios continua, mas perde a ligação com este template. Para só parar de usar, desmarque "Ativo".','Apagar')) return;
+  try{ const {error}=await sb.from('templates').delete().eq('id',id); if(error) throw error; S.tpls=S.tpls.filter(t=>t.id!==id); S.ints.forEach(i=>{if(i.template_id===id)i.template_id=null}); S.tplEdit=null; pTemplates(); }catch(e){ erro(e); }
+}
+
+/* =========================================================
+   PÁGINA: IMPORTAR
+   ========================================================= */
+function pImportar(){
+  $('main').innerHTML = `
+    <h1>Importar contatos</h1>
+    <p class="sub">CSV exportado do WhatsApp (ou qualquer planilha com coluna de telefone). Números duplicados, já existentes ou bloqueados são ignorados automaticamente.</p>
+    <div class="card"><input type="file" id="csvFile" accept=".csv,text/csv"></div>
+    <div id="impArea"></div>`;
+  $('csvFile').onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>{
+      const cols = r.meta.fields||[];
+      const acha = re => cols.find(c=>re.test(c)) || '';
+      S.imp = {rows:r.data, cols, map:{
+        tel: acha(/^phone number$/i) || acha(/telefone|phone|celular|whats|fone/i),
+        nome: acha(/^saved name$/i) || acha(/^nome$|^name$|nome/i),
+        nome2: acha(/^public name$/i),
+        origem: acha(/group name|grupo|origem/i),
+        bloq: acha(/is blocked/i)
+      }, origemPadrao:'', tag:'', nome:file.name};
+      renderImp();
+    }});
+  };
+  if(S.imp) renderImp();
+}
+function prepararImp(){
+  const {rows,map} = S.imp;
+  const existe = new Set(S.leads.map(l=>l.telefone)), blk = new Set(S.blk.map(b=>b.telefone)), visto = new Set();
+  const c = {total:rows.length, inval:0, dup:0, existe:0, bloq:0, corrigidos:0}, novos=[];
+  for(const r of rows){
+    const bruto = String(r[map.tel]||'').replace(/\D/g,'');
+    const tel = normTel(r[map.tel]);
+    if(!tel){ c.inval++; continue; }
+    if(visto.has(tel)){ c.dup++; continue; } visto.add(tel);
+    if(existe.has(tel)){ c.existe++; continue; }
+    if(blk.has(tel) || (map.bloq && String(r[map.bloq]).toLowerCase()==='true')){ c.bloq++; continue; }
+    if(tel.length===13 && bruto.length===12) c.corrigidos++;
+    const orig = String((map.nome && r[map.nome]) || (map.nome2 && r[map.nome2]) || '').trim();
+    novos.push({telefone:tel, nome_original:orig||null, nome:limparNome(orig)||null,
+      origem: limparOrigem(map.origem ? r[map.origem] : '') || S.imp.origemPadrao || null,
+      tags: S.imp.tag ? [S.imp.tag] : [], etapa:'novo'});
+  }
+  return {c, novos};
+}
+function renderImp(){
+  const I = S.imp, {c,novos} = prepararImp();
+  const sel = (k,lbl,opc) => `<label class="f">${lbl}<select onchange="S.imp.map.${k}=this.value;renderImp()">${opc?'<option value="">(nenhuma)</option>':''}${I.cols.map(col=>`<option ${I.map[k]===col?'selected':''}>${esc(col)}</option>`).join('')}</select></label>`;
+  $('impArea').innerHTML = `
+    <h2>1. Colunas</h2>
+    <div class="card"><div class="grid2">
+      ${sel('tel','Telefone *',false)}${sel('nome','Nome',true)}${sel('nome2','Nome alternativo (se vazio)',true)}${sel('origem','Origem / grupo',true)}
+      <label class="f">Origem padrão (se a coluna estiver vazia)<input type="text" value="${esc(I.origemPadrao)}" onchange="S.imp.origemPadrao=this.value;renderImp()"></label>
+      <label class="f">Tag para este lote (opcional)<input type="text" value="${esc(I.tag)}" placeholder="ex: lote-nov" onchange="S.imp.tag=this.value.trim();renderImp()"></label>
+    </div></div>
+    <h2>2. Conferência</h2>
+    <div class="kpis">
+      <div class="kpi"><b>${c.total}</b><span>linhas no arquivo</span></div>
+      <div class="kpi"><b style="color:var(--wa)">${novos.length}</b><span>serão importados</span></div>
+      <div class="kpi"><b>${c.corrigidos}</b><span>celulares com 9º dígito adicionado</span></div>
+      <div class="kpi"><b>${c.existe + c.dup}</b><span>já existem / duplicados</span></div>
+      <div class="kpi"><b>${c.bloq}</b><span>bloqueados (ignorados)</span></div>
+      <div class="kpi"><b>${c.inval}</b><span>telefone inválido</span></div>
+    </div>
+    <div class="tbl-wrap" style="max-height:320px"><table><thead><tr><th>Nome original</th><th>Nome tratado</th><th>WhatsApp</th><th>Origem</th></tr></thead>
+      <tbody>${novos.slice(0,15).map(n=>`<tr><td>${esc(n.nome_original)}</td><td>${esc(n.nome||'—')}</td><td>${fmtTel(n.telefone)}</td><td>${esc(n.origem||'')}</td></tr>`).join('')}</tbody></table></div>
+    ${novos.length>15?`<p class="muted">… e mais ${novos.length-15}.</p>`:''}
+    <h2>3. Importar</h2>
+    <button class="btn pri" id="btnImp" ${novos.length?'':'disabled'} onclick="importar()">Importar ${novos.length} leads</button> <span id="impProg" class="muted"></span>`;
+}
+async function importar(){
+  const {novos} = prepararImp();
+  $('btnImp').disabled = true;
+  let ok = 0;
+  try{
+    for(let i=0;i<novos.length;i+=500){
+      const {data,error} = await sb.from('leads').upsert(novos.slice(i,i+500),{onConflict:'telefone',ignoreDuplicates:true}).select();
+      if(error) throw error;
+      S.leads.push(...data); ok += data.length;
+      $('impProg').textContent = `${ok}/${novos.length}…`;
+    }
+    toast(`${ok} leads importados`);
+    S.imp = null; location.hash = '#hoje';
+  }catch(e){ erro(e); $('btnImp').disabled=false; }
+}
+
+/* =========================================================
+   PÁGINA: EXCLUSÕES
+   ========================================================= */
+function pExclusoes(){
+  const lix = S.leads.filter(l=>l.deleted_at).sort((a,b)=>b.deleted_at.localeCompare(a.deleted_at));
+  const blkSet = new Set(S.blk.map(b=>b.telefone));
+  const velhos = lix.filter(l=>daysSince(l.deleted_at)>=30);
+  const tab = S.excTab;
+  $('main').innerHTML = `
+    <h1>Exclusões</h1>
+    <p class="sub">Lixeira = some das listas, dá para restaurar. Bloqueio = nunca mais contatar nem reimportar (LGPD / pediu para sair).</p>
+    <div class="tabs"><button class="${tab==='lixeira'?'on':''}" onclick="S.excTab='lixeira';pExclusoes()">🗑 Lixeira (${lix.length})</button>
+      <button class="${tab==='bloq'?'on':''}" onclick="S.excTab='bloq';pExclusoes()">🚫 Não contatar (${S.blk.length})</button></div>
+    ${tab==='lixeira' ? `
+      ${velhos.length?`<div class="row-flex" style="margin-bottom:10px"><button class="btn danger" onclick="apagarDef(${JSON.stringify(velhos.map(l=>l.id)).replace(/"/g,'&quot;')})">Apagar definitivamente ${velhos.length} com mais de 30 dias</button></div>`:''}
+      <div class="list">${lix.map(l=>`<div class="item"><div class="who" onclick="abrirLead('${l.id}')"><b>${esc(nomeDe(l))} ${blkSet.has(l.telefone)?'<span class="badge" style="color:var(--red)">bloqueado</span>':''}</b>
+        <span class="muted">${fmtTel(l.telefone)} · excluído em ${fmtDate(l.deleted_at)} ${l.motivo_perda?'· '+esc(l.motivo_perda):''}</span></div>
+        <div class="acts">${blkSet.has(l.telefone)?'':`<button class="btn sm" onclick="restaurar('${l.id}')">Restaurar</button>`}
+        <button class="btn sm danger" onclick="apagarDef(['${l.id}'])">Apagar de vez</button></div></div>`).join('') || '<div class="empty">Lixeira vazia.</div>'}</div>`
+    : `
+      <div class="card" style="margin-bottom:12px"><div class="row-flex" style="flex-wrap:nowrap">
+        <input type="text" id="bTel" placeholder="Telefone"><input type="text" id="bMot" placeholder="Motivo" value="Pediu para sair">
+        <button class="btn" onclick="addBloq()">Bloquear número</button></div></div>
+      <div class="list">${S.blk.slice().reverse().map(b=>{ const l=S.leads.find(x=>x.telefone===b.telefone); return `<div class="item">
+        <div class="who" ${l?`onclick="abrirLead('${l.id}')"`:''}><b>${esc(l?nomeDe(l):fmtTel(b.telefone))}</b><span class="muted">${fmtTel(b.telefone)} · ${esc(b.motivo||'')} · ${fmtDate(b.created_at)}</span></div>
+        <div class="acts"><button class="btn sm" onclick="desbloquear('${b.telefone}')">Remover bloqueio</button></div></div>`; }).join('') || '<div class="empty">Ninguém bloqueado.</div>'}</div>`}`;
+}
+async function apagarDef(ids){
+  if(!await confirmar('Apagar definitivamente?',`${ids.length} lead(s) e todo o histórico serão apagados. Não dá para desfazer. (Bloqueios continuam valendo.)`,'Apagar')) return;
+  try{
+    for(let i=0;i<ids.length;i+=200){ const p=ids.slice(i,i+200); const {error}=await sb.from('leads').delete().in('id',p); if(error) throw error; }
+    const set = new Set(ids);
+    S.leads = S.leads.filter(l=>!set.has(l.id)); S.ints = S.ints.filter(i=>!set.has(i.lead_id));
+    if(set.has(S.drawer)) fecharLead();
+    toast('Apagado'); render();
+  }catch(e){ erro(e); }
+}
+async function addBloq(){
+  const tel = normTel($('bTel').value); if(!tel) return toast('Telefone inválido');
+  try{
+    const {data,error} = await sb.from('bloqueados').upsert({telefone:tel,motivo:$('bMot').value}).select().single(); if(error) throw error;
+    S.blk = S.blk.filter(b=>b.telefone!==tel).concat(data);
+    const l = S.leads.find(x=>x.telefone===tel);
+    if(l && !l.deleted_at) await setEtapa(l.id,'perdido',{motivo_perda:data.motivo||'Bloqueado',deleted_at:nowIso()});
+    toast('Bloqueado'); render();
+  }catch(e){ erro(e); }
+}
+async function desbloquear(tel){
+  if(!await confirmar('Remover bloqueio?','O número poderá ser contatado e importado de novo. Se o lead estiver na lixeira, restaure-o depois.','Remover')) return;
+  try{ const {error}=await sb.from('bloqueados').delete().eq('telefone',tel); if(error) throw error; S.blk=S.blk.filter(b=>b.telefone!==tel); render(); }catch(e){ erro(e); }
+}
+
+/* =========================================================
+   PÁGINA: RELATÓRIOS
+   ========================================================= */
+function pRelatorios(){
+  const dias = S.relDias, desde = dias ? Date.now()-dias*864e5 : 0;
+  const ints = S.ints.filter(i=>new Date(i.created_at).getTime()>=desde);
+  const env = ints.filter(i=>i.tipo==='whatsapp'), prim = env.filter(i=>i.resultado==='primeiro'), resp = ints.filter(i=>i.tipo==='resposta');
+  const a = ativos(), ass = a.filter(l=>l.etapa==='assinante');
+  const mrr = ass.reduce((s,l)=>s+(+l.valor_mensal||0),0);
+  const novosAss = ints.filter(i=>i.tipo==='etapa' && /→ Assinante/.test(i.texto||'')).length;
+  const leadsResp = new Set(resp.map(i=>i.lead_id)).size, leadsAb = new Set(prim.map(i=>i.lead_id)).size;
+  const porEtapa = ETAPAS.map(e=>({...e, n:a.filter(l=>l.etapa===e.k).length}));
+  const maxE = Math.max(1,...porEtapa.map(e=>e.n));
+  const ult14 = [...Array(14)].map((_,i)=>addDays(today(),i-13));
+  const porDia = ult14.map(d=>({d, n:S.ints.filter(i=>i.tipo==='whatsapp'&&ymd(new Date(i.created_at))===d).length}));
+  const maxD = Math.max(1,...porDia.map(x=>x.n));
+  const motivos = {}; a.filter(l=>l.etapa==='perdido').concat(S.leads.filter(l=>l.deleted_at&&l.motivo_perda)).forEach(l=>{const m=l.motivo_perda||'Sem motivo'; motivos[m]=(motivos[m]||0)+1;});
+  const motArr = Object.entries(motivos).sort((x,y)=>y[1]-x[1]); const maxM = Math.max(1,...motArr.map(m=>m[1]));
+  const tplRows = S.tpls.map(t=>{ const e=env.filter(i=>i.template_id===t.id).length, r=resp.filter(i=>i.template_id===t.id).length; return {t,e,r,tx:e?r/e:0}; }).filter(x=>x.e).sort((x,y)=>y.tx-x.tx);
+  $('main').innerHTML = `
+    <div class="row-flex" style="justify-content:space-between;margin-bottom:14px">
+      <h1>Relatórios</h1>
+      <select style="width:auto" onchange="S.relDias=+this.value;pRelatorios()">${[[7,'Últimos 7 dias'],[30,'Últimos 30 dias'],[90,'Últimos 90 dias'],[0,'Tudo']].map(([v,t])=>`<option value="${v}" ${S.relDias===v?'selected':''}>${t}</option>`).join('')}</select>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><b>${env.length}</b><span>mensagens enviadas</span></div>
+      <div class="kpi"><b>${leadsAb}</b><span>leads abordados pela 1ª vez</span></div>
+      <div class="kpi"><b>${leadsAb?Math.round(leadsResp/leadsAb*100):0}%</b><span>taxa de resposta (${leadsResp} responderam)</span></div>
+      <div class="kpi"><b>${novosAss}</b><span>novos assinantes no período</span></div>
+      <div class="kpi"><b>${ass.length}</b><span>assinantes ativos</span></div>
+      <div class="kpi"><b>${money(mrr)}</b><span>receita mensal (MRR)</span></div>
+    </div>
+    <div class="two">
+      <div class="card"><h2 style="margin-top:0">Leads por etapa (agora)</h2>
+        ${porEtapa.map(e=>`<div class="hbar"><span class="l">${e.l}</span><span class="t"><i style="width:${e.n/maxE*100}%;background:${e.c}"></i></span><span class="v">${e.n}</span></div>`).join('')}</div>
+      <div class="card"><h2 style="margin-top:0">Mensagens por dia (14 dias)</h2>
+        <div class="vbars">${porDia.map(x=>`<div title="${fmtDate(x.d)}: ${x.n}"><b>${x.n||''}</b><i style="height:${x.n/maxD*100}%"></i>${x.d.slice(8)}</div>`).join('')}</div></div>
+      <div class="card"><h2 style="margin-top:0">Templates que mais geram resposta</h2>
+        ${tplRows.length ? `<table><thead><tr><th>Template</th><th>Envios</th><th>Resp.</th><th>Taxa</th></tr></thead><tbody>${tplRows.map(x=>`<tr><td>${esc(x.t.nome)}</td><td>${x.e}</td><td>${x.r}</td><td><b>${Math.round(x.tx*100)}%</b></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Ainda sem envios no período.</p>'}</div>
+      <div class="card"><h2 style="margin-top:0">Motivos de perda</h2>
+        ${motArr.length ? motArr.map(([m,n])=>`<div class="hbar"><span class="l">${esc(m)}</span><span class="t"><i style="width:${n/maxM*100}%;background:#ef4444"></i></span><span class="v">${n}</span></div>`).join('') : '<p class="muted">Nenhum lead perdido ainda.</p>'}</div>
+    </div>`;
+}
+
+/* =========================================================
+   PÁGINA: CONFIGURAÇÕES
+   ========================================================= */
+function pConfig(){
+  const c = S.config;
+  $('main').innerHTML = `
+    <h1>Configurações</h1><p class="sub">Regras da sua cadência de abordagem.</p>
+    <div class="two">
+      <div class="card">
+        <label class="f">Seu nome (variável {meu_nome})<input type="text" id="cNome" value="${esc(c.meu_nome)}"></label>
+        <label class="f">Limite de novos leads abordados por dia<input type="number" id="cLim" min="1" value="${c.limite_diario}"></label>
+        <p class="muted" style="font-size:12px;margin-top:-4px">Comece com 20–30/dia em número novo. Muitos envios frios seguidos podem bloquear o WhatsApp.</p>
+        <label class="f">Dias entre tentativas (separe por vírgula)<input type="text" id="cCad" value="${c.cadencia.join(', ')}"></label>
+        <p class="muted" style="font-size:12px;margin-top:-4px">Ex.: "2, 4, 7" = 1º contato, follow-up 2 dias depois, outro 4 dias depois, último 7 dias depois. Sem resposta após isso, o lead aparece em "tentativas esgotadas".</p>
+        <label class="f">Alerta de card parado no funil (dias)<input type="number" id="cPar" min="1" value="${c.dias_parado}"></label>
+      </div>
+      <div class="card">
+        <label class="f">Planos (um por linha: Nome | valor)<textarea id="cPlan" rows="4">${c.planos.map(p=>`${p.nome} | ${p.valor}`).join('\n')}</textarea></label>
+        <label class="f">Motivos de perda (um por linha)<textarea id="cMot" rows="6">${c.motivos.join('\n')}</textarea></label>
+      </div>
+    </div>
+    <div style="margin-top:14px"><button class="btn pri" onclick="salvarConfig()">Salvar configurações</button></div>
+    <h2>Conexão</h2>
+    <div class="card"><p style="margin-top:0">Supabase: <code>${esc(conexao().url)}</code></p>
+      <div class="row-flex"><button class="btn" onclick="trocarConexao()">Trocar conexão</button><button class="btn" onclick="sair()">Sair da conta</button>
+      <button class="btn" onclick="carregarTudo().then(render)">Recarregar dados</button></div></div>`;
+}
+async function salvarConfig(){
+  const cad = $('cCad').value.split(',').map(s=>parseInt(s)).filter(n=>n>0);
+  const planos = $('cPlan').value.split('\n').map(l=>l.split('|')).filter(p=>p[0].trim()).map(p=>({nome:p[0].trim(),valor:Number(String(p[1]||'0').replace(',','.'))||0}));
+  const data = {...S.config, meu_nome:$('cNome').value.trim(), limite_diario:Math.max(1,+$('cLim').value||30), cadencia:cad.length?cad:[2,4,7],
+    dias_parado:Math.max(1,+$('cPar').value||5), planos, motivos:$('cMot').value.split('\n').map(s=>s.trim()).filter(Boolean)};
+  try{ const {error}=await sb.from('config').upsert({id:1,data}); if(error) throw error; S.config=data; toast('Configurações salvas'); render(); }catch(e){ erro(e); }
+}
+
+/* =========================================================
+   CONEXÃO E LOGIN
+   ========================================================= */
+function conexao(){
+  let url = SUPABASE_URL, key = SUPABASE_KEY;
+  try{ url = url || localStorage.getItem('crm_sb_url') || ''; key = key || localStorage.getItem('crm_sb_key') || ''; }catch(e){}
+  return {url, key};
+}
+function mostrar(v){ ['vSetup','vLogin','vApp'].forEach(x=>$(x).classList.toggle('hidden', x!==v)); }
+function salvarConexao(){
+  const url = $('setUrl').value.trim().replace(/\/$/,''), key = $('setKey').value.trim();
+  if(!/^https?:\/\//.test(url) || key.length<20) return toast('Confira a URL e a chave');
+  try{ localStorage.setItem('crm_sb_url',url); localStorage.setItem('crm_sb_key',key); }catch(e){ return toast('Seu navegador bloqueou o armazenamento. Preencha no código.'); }
+  iniciar();
+}
+function trocarConexao(){ try{ localStorage.removeItem('crm_sb_url'); localStorage.removeItem('crm_sb_key'); }catch(e){} sb?.auth.signOut().catch(()=>{}); sb=null; mostrar('vSetup'); }
+async function entrar(){
+  const {error} = await sb.auth.signInWithPassword({email:$('lgEmail').value, password:$('lgPass').value});
+  if(error) return toast(error.message==='Invalid login credentials' ? 'E-mail ou senha incorretos' : error.message);
+  abrirApp();
+}
+async function sair(){ await sb.auth.signOut(); fecharLead(); mostrar('vLogin'); }
+async function abrirApp(){
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session) return mostrar('vLogin');
+  $('userEmail').textContent = session.user.email;
+  mostrar('vApp');
+  try{ await carregarTudo(); route(); }catch(e){}
+}
+function iniciar(){
+  const {url,key} = conexao();
+  if(!url || !key) return mostrar('vSetup');
+  if(!window.supabase) { document.body.innerHTML = '<p style="padding:20px">Não consegui carregar o supabase-js (verifique sua internet).</p>'; return; }
+  sb = window.supabase.createClient(url, key);
+  abrirApp();
+}
+iniciar();
+</script>
+</body>
+</html>
